@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>아이템 실적 분석 시스템 v13</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root { --up: #2ecc71; --down: #e74c3c; --curr: #3498db; --prev: #bdc3c7; --bg: #f4f7f6; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 20px; margin: 0; color: #333; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        /* 필터 및 검색바 */
+        .tab-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 15px; }
+        .btn { border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; background: #eee; font-size: 0.85rem; }
+        .btn.active { background: var(--curr); color: white; }
+        .sub-tab { background: #f8f9fa; border: 1px solid #ddd; font-size: 0.8rem; }
+        .sub-tab.active { background: #2c3e50; color: white; }
+        
+        .custom-date-box { display: flex; align-items: center; gap: 8px; background: #fff; padding: 5px 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 0.85rem; }
+        input[type="date"] { border: 1px solid #ccc; padding: 4px; border-radius: 5px; outline: none; }
+        .search-btn { background: #576574; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-left: 6px solid var(--curr); padding-left: 15px; }
+        .download-btn { background: #27ae60; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        
+        .chart-box { height: 380px; width: 100%; position: relative; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .data-table th, .data-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .data-table th { background: #f8f9fa; color: #666; font-size: 0.9rem; }
+        
+        .txt-up { color: var(--up); font-weight: bold; }
+        .txt-down { color: var(--down); font-weight: bold; }
+
+        #detailSection, #tableSection { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="control-panel">
+            <div class="tab-row" id="periodTabs">
+                <button class="btn" onclick="updatePeriod('weekly', this)">주별</button>
+                <button class="btn active" onclick="updatePeriod('monthly', this)">월별</button>
+                <button class="btn" onclick="updatePeriod('quarterly', this)">분기별</button>
+                <button class="btn" onclick="updatePeriod('half', this)">반기별</button>
+                <button class="btn" onclick="updatePeriod('yearly', this)">년도별</button>
+                
+                <div class="custom-date-box">
+                    <strong>📅 직접 선택</strong>
+                    <input type="date" id="startAt"> ~ 
+                    <input type="date" id="endAt">
+                    <button class="search-btn" onclick="applyCustomSearch()">검색</button>
+                </div>
+            </div>
+
+            <div class="tab-row">
+                <button class="btn sub-tab active" onclick="updateCurr('전체', this)">전체</button>
+                <button class="btn sub-tab" onclick="updateCurr('IAP', this)">IAP</button>
+                <button class="btn sub-tab" onclick="updateCurr('Golden Token', this)">Golden Token</button>
+                <button class="btn sub-tab" onclick="updateCurr('Credit', this)">Credit</button>
+                <button class="btn sub-tab" onclick="updateCurr('Pearl', this)">Pearl</button>
+            </div>
+        </div>
+
+        <div class="card-header">
+            <div>
+                <h2 id="mainTitle" style="margin:0;">실적 분석</h2>
+                <small id="mainRange" style="color:#888;">조회 기간</small>
+            </div>
+            <button class="download-btn" onclick="csvMain()">CSV 다운로드</button>
+        </div>
+        <div class="chart-box"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <div id="detailSection" class="card">
+        <div class="card-header">
+            <h3 id="detailTitle" style="margin:0;">🔍 상세 항목 비교</h3>
+            <button class="download-btn" onclick="csvDetail()">CSV 다운로드</button>
+        </div>
+        <div class="chart-box"><canvas id="detailChart"></canvas></div>
+    </div>
+
+    <div id="tableSection" class="card">
+        <div class="card-header">
+            <h3 id="tableTitle" style="margin:0;">📦 아이템별 실적 리스트</h3>
+            <button class="download-btn" onclick="csvTable()">CSV 다운로드</button>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>순위</th><th>아이템 ID</th><th>아이템 명</th>
+                    <th id="thPrev">비교 대상</th><th id="thCurr">기준 대상</th><th>증감율</th>
+                </tr>
+            </thead>
+            <tbody id="itemTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    Chart.register(ChartDataLabels);
+    let mainChart, detailChart;
+    let isCompare = true;
+    let currCurrency = '전체', currCat = '', currSub = '';
+    let labelPrev = '', labelCurr = '';
+
+    const db = {
+        main: { labels: ['수족관', '낚시대', '릴', '아바타 코스튬'], prev: [950, 1200, 750, 1800], curr: [1300, 1050, 900, 2650] },
+        details: { '아바타 코스튬': { labels: ['모자', '안경', '상의', '하의'], prev: [500, 350, 550, 400], curr: [820, 280, 880, 670] } },
+        items: { '모자': [ {id:'H001', name:'레드 캡', prev: 200, curr: 450}, {id:'H005', name:'중절모', prev: 150, curr: 220} ] }
+    };
+
+    // --- 명칭 통일 로직 (0000년 형식으로 고정) ---
+    function setLabels(mode) {
+        const y = 2024;
+        if (mode === 'weekly') { 
+            labelPrev = `${y}년 03월 3주`; 
+            labelCurr = `${y}년 03월 4주`; 
+            document.getElementById('mainRange').innerText = "2024.03.24 ~ 2024.03.30"; 
+        } 
+        else if (mode === 'monthly') { 
+            labelPrev = `${y}년 02월`; 
+            labelCurr = `${y}년 03월`; 
+            document.getElementById('mainRange').innerText = "2024.03.01 ~ 2024.03.31"; 
+        } 
+        else if (mode === 'quarterly') { 
+            labelPrev = `2023년 4분기`; 
+            labelCurr = `2024년 1분기`; 
+            document.getElementById('mainRange').innerText = "2024.01.01 ~ 2024.03.31"; 
+        } 
+        else if (mode === 'half') { 
+            labelPrev = `2023년 후반기`; 
+            labelCurr = `2024년 전반기`; 
+            document.getElementById('mainRange').innerText = "2024.01.01 ~ 2024.06.30"; 
+        } 
+        else { 
+            labelPrev = `2023년`; 
+            labelCurr = `2024년`; 
+            document.getElementById('mainRange').innerText = "2024.01.01 ~ 2024.12.31"; 
+        }
+        document.getElementById('mainTitle').innerText = labelCurr + " 실적 분석";
+    }
+
+    function getOpt(source) {
+        return {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'top', align: 'end' },
+                datalabels: {
+                    anchor: 'end', align: 'top', font: { weight: 'bold' },
+                    formatter: (v, ctx) => {
+                        if (!isCompare || ctx.datasetIndex === 0) return v;
+                        const r = (((v - source.prev[ctx.dataIndex]) / source.prev[ctx.dataIndex]) * 100).toFixed(1);
+                        return `${v}\n(${r >= 0 ? '▲' : '▼'}${Math.abs(r)}%)`;
+                    },
+                    color: (ctx) => (!isCompare || ctx.datasetIndex === 0) ? '#666' : (source.curr[ctx.dataIndex] >= source.prev[ctx.dataIndex] ? '#2ecc71' : '#e74c3c'),
+                    textAlign: 'center'
+                }
+            },
+            scales: { y: { display: false }, x: { grid: { display: false } } },
+            onClick: (e, el) => { if(el.length > 0) renderDetail(source.labels[el[0].index]); }
+        };
+    }
+
+    function renderMain() {
+        if (mainChart) mainChart.destroy();
+        const ds = [];
+        if (isCompare) ds.push({ label: labelPrev, data: db.main.prev, backgroundColor: '#dfe6e9', borderRadius: 7 });
+        ds.push({ label: labelCurr, data: db.main.curr, backgroundColor: '#3498db', borderRadius: 7 });
+        mainChart = new Chart(document.getElementById('mainChart'), { type: 'bar', data: { labels: db.main.labels, datasets: ds }, options: getOpt(db.main) });
+    }
+
+    function renderDetail(cat) {
+        currCat = cat;
+        const d = db.details[cat];
+        if (!d) return;
+        document.getElementById('detailSection').style.display = 'block';
+        document.getElementById('tableSection').style.display = 'none';
+        document.getElementById('detailTitle').innerText = `🔍 ${cat} 상세 실적 비교`;
+        if (detailChart) detailChart.destroy();
+        const ds = [];
+        if (isCompare) ds.push({ label: labelPrev, data: d.prev, backgroundColor: '#dfe6e9', borderRadius: 5 });
+        ds.push({ label: labelCurr, data: d.curr, backgroundColor: '#9b59b6', borderRadius: 5 });
+        detailChart = new Chart(document.getElementById('detailChart'), { type: 'bar', data: { labels: d.labels, datasets: ds }, options: { ...getOpt(d), onClick: (e, el) => { if(el.length > 0) renderTable(d.labels[el[0].index]); } } });
+    }
+
+    function renderTable(sub) {
+        currSub = sub;
+        const list = db.items[sub];
+        if (!list) return;
+        document.getElementById('tableSection').style.display = 'block';
+        document.getElementById('thPrev').innerText = labelPrev;
+        document.getElementById('thCurr').innerText = labelCurr;
+        const tbody = document.getElementById('itemTableBody');
+        tbody.innerHTML = '';
+        list.sort((a,b) => b.curr - a.curr).forEach((it, i) => {
+            const r = (((it.curr - it.prev) / it.prev) * 100).toFixed(1);
+            tbody.innerHTML += `<tr><td>${i+1}</td><td>${it.id}</td><td>${it.name}</td><td>${it.prev}</td><td>${it.curr}</td><td><span class="${r >= 0 ? 'txt-up' : 'txt-down'}">${r >= 0 ? '▲' : '▼'}${Math.abs(r)}%</span></td></tr>`;
+        });
+    }
+
+    function applyCustomSearch() {
+        const s = document.getElementById('startAt').value;
+        const e = document.getElementById('endAt').value;
+        if (!s && !e) { alert("날짜를 선택해주세요."); return; }
+        isCompare = false;
+        labelCurr = "조회 결과";
+        labelPrev = "-";
+        document.querySelectorAll('#periodTabs .btn').forEach(b => b.classList.remove('active'));
+        if (s && e) document.getElementById('mainRange').innerText = `${s} ~ ${e}`;
+        else if (s) document.getElementById('mainRange').innerText = `${s} ~ 현재`;
+        else if (e) document.getElementById('mainRange').innerText = `시작일 ~ ${e}`;
+        renderMain();
+    }
+
+    function updatePeriod(mode, btn) {
+        isCompare = true;
+        document.querySelectorAll('#periodTabs .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setLabels(mode);
+        renderMain();
+    }
+
+    function updateCurr(type, btn) {
+        currCurrency = type;
+        document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderMain();
+    }
+
+    // CSV 다운로드 (명칭 통일 적용)
+    function csvMain() { downloadCSV("전체_실적", [[ "항목", labelPrev, labelCurr ], ...db.main.labels.map((l, i) => [l, db.main.prev[i], db.main.curr[i]])]); }
+    function csvDetail() { const d = db.details[currCat]; downloadCSV(`${currCat}_상세`, [[ "항목", labelPrev, labelCurr ], ...d.labels.map((l, i) => [l, d.prev[i], d.curr[i]])]); }
+    function csvTable() { const r = [["순위", "아이템ID", "아이템명", labelPrev, labelCurr, "증감율"]]; db.items[currSub].forEach((it, i) => r.push([i+1, it.id, it.name, it.prev, it.curr, (((it.curr-it.prev)/it.prev)*100).toFixed(1)+"%"])); downloadCSV(`${currSub}_아이템리스트`, r); }
+
+    function downloadCSV(name, dataRows) {
+        const head = [["제목", name], ["조회기간", document.getElementById('mainRange').innerText], ["재화", currCurrency], []];
+        const content = "\uFEFF" + head.concat(dataRows).map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${name}.csv`;
+        a.click();
+    }
+
+    setLabels('monthly');
+    renderMain();
+</script>
+</body>
+</html>
