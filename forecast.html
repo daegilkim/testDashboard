@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>매출 분석 요약 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root { --up: #2ecc71; --down: #eb4d4b; --bg: #f0f2f5; --card-bg: #ffffff; --dark-blue: #576574; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); padding: 30px; margin: 0; color: #2d3436; }
+        .container { max-width: 1100px; margin: auto; }
+        .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px; }
+        .kpi-card { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
+        .kpi-label { font-size: 0.95rem; color: #636e72; margin-bottom: 8px; }
+        .kpi-value { font-size: 1.8rem; font-weight: 800; color: #2d3436; }
+        .card { background: var(--card-bg); padding: 30px; border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .tab-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .btn { border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; background: #e9ecef; color: #495057; }
+        .btn.active { background: #34495e; color: white; }
+        .custom-date-box { display: flex; align-items: center; gap: 12px; margin-left: auto; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid #e0e0e0; }
+        .custom-date-box .label { font-weight: bold; font-size: 0.95rem; }
+        input[type="date"] { border: 1px solid #ddd; padding: 8px; border-radius: 8px; outline: none; }
+        .search-btn { background: var(--dark-blue); color: white; border: none; padding: 10px 22px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .chart-box { height: 380px; width: 100%; }
+        .line-chart-box { height: 380px; width: 100%; margin-top: 10px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .download-btn { background: #27ae60; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .txt-up { color: var(--up); font-weight: bold; }
+        .txt-down { color: var(--down); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">전체 매출 (현재 기간)</div>
+            <div class="kpi-value" id="kpiTotalCurr">$0</div>
+            <div id="kpiDiff" style="font-size: 0.9rem;">전기 대비 -</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">최고 실적 플랫폼</div>
+            <div class="kpi-value" id="kpiTopPlat">-</div>
+            <div style="color:#636e72; font-size: 0.9rem;">점유율 1위</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="tab-row" id="periodTabs">
+            <button class="btn" onclick="updatePeriod('daily', this)">일별</button>
+            <button class="btn" onclick="updatePeriod('weekly', this)">주별</button>
+            <button class="btn active" onclick="updatePeriod('monthly', this)">월별</button>
+            <button class="btn" onclick="updatePeriod('quarterly', this)">분기별</button>
+            <button class="btn" onclick="updatePeriod('yearly', this)">년도별</button>
+            <div class="custom-date-box">
+                <span class="label">📅 직접 선택</span>
+                <input type="date" id="startAt"> <span>~</span> <input type="date" id="endAt">
+                <button class="search-btn" onclick="applyCustomSearch()">검색</button>
+            </div>
+        </div>
+        <div class="card-header">
+            <div class="title-group">
+                <h2 id="mainTitle" style="margin:0; font-size:1.35rem;">플랫폼별 매출 현황</h2>
+                <small id="mainRange" style="color:#95a5a6;">기간 정보</small>
+            </div>
+            <button class="download-btn" onclick="downloadBarCSV()">CSV 다운로드</button>
+        </div>
+        <div class="chart-box"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 style="margin:0; font-size:1.3rem;">📈 플랫폼별 매출 추이</h2>
+            <button class="download-btn" onclick="downloadLineCSV()">CSV 다운로드</button>
+        </div>
+        <div class="line-chart-box"><canvas id="lineChart"></canvas></div>
+    </div>
+</div>
+
+<script>
+    Chart.register(ChartDataLabels);
+    let mainChart, lineChart;
+    const platNames = ['Meta', 'Steam', 'Pico China', 'Pico Global'];
+    const platColors = ['#4834d4', '#f0932b', '#eb4d4b', '#22a6b3'];
+    const prevColor = '#dcdde1';
+    const TODAY = new Date('2026-04-08');
+
+    function formatAmt(v) { return '$' + v.toLocaleString(); }
+
+    function generateTrendData(mode, start, end) {
+        let labels = [];
+        if (mode === 'daily') {
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date(TODAY); d.setDate(TODAY.getDate() - i);
+                labels.push(d.toISOString().split('T')[0].substring(5));
+            }
+        } else if (mode === 'weekly') { labels = ['3월 3주', '3월 4주', '4월 1주', '4월 2주']; }
+        else if (mode === 'monthly') { labels = ['1월', '2월', '3월', '4월']; }
+        else if (mode === 'quarterly') { labels = ['23.3Q', '23.4Q', '24.1Q', '24.2Q']; }
+        else if (mode === 'yearly') { labels = ['2023년', '2024년', '2025년', '2026년']; }
+        else if (mode === 'custom') {
+            let sDate = start ? new Date(start) : new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - 7);
+            let eDate = end ? new Date(end) : new Date(TODAY);
+            let curr = new Date(sDate);
+            while (curr <= eDate) {
+                labels.push(curr.toISOString().split('T')[0]);
+                curr.setDate(curr.getDate() + 1);
+                if(labels.length > 100) break; // 무한루프 방지
+            }
+        }
+        const count = labels.length;
+        const createSet = (name, color, min, max, dash = []) => ({
+            label: name, data: Array.from({length: count}, () => Math.floor(Math.random() * (max-min)) + min),
+            borderColor: color, borderWidth: dash.length ? 3 : 2, borderDash: dash, fill: false, tension: 0.3, pointRadius: dash.length ? 0 : 3
+        });
+        return {
+            labels,
+            datasets: [
+                createSet('전체', '#2d3436', 400000, 600000, [5, 5]),
+                createSet('Meta', platColors[0], 150000, 250000),
+                createSet('Steam', platColors[1], 100000, 180000),
+                createSet('Pico China', platColors[2], 70000, 120000),
+                createSet('Pico Global', platColors[3], 40000, 70000)
+            ]
+        };
+    }
+
+    function renderCharts(mode, start, end) {
+        const currData = [185000, 115000, 92000, 58000];
+        const prevData = [150000, 120000, 80000, 45000];
+
+        if (mainChart) mainChart.destroy();
+        mainChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels: platNames, datasets: [
+                { label: '이전', data: prevData, backgroundColor: prevColor, borderRadius: 8 },
+                { label: '현재', data: currData, backgroundColor: platColors, borderRadius: 8 }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { 
+                legend: { display: false }, 
+                datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold', size: 10 }, formatter: (v, ctx) => {
+                    if (ctx.datasetIndex === 0) return '';
+                    const r = (((v - prevData[ctx.dataIndex]) / prevData[ctx.dataIndex]) * 100).toFixed(1);
+                    return `${formatAmt(v)}\n(${r >= 0 ? '▲' : '▼'}${Math.abs(r)}%)`;
+                }, color: (ctx) => ctx.datasetIndex === 0 ? '#999' : (currData[ctx.dataIndex] >= prevData[ctx.dataIndex] ? '#2ecc71' : '#e74c3c'), textAlign: 'center' }
+            }, scales: { y: { display: false }, x: { grid: { display: false }}}}
+        });
+
+        if (lineChart) lineChart.destroy();
+        const trend = generateTrendData(mode, start, end);
+        lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
+            type: 'line',
+            data: trend,
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, datalabels: { display: false }},
+                scales: { y: { ticks: { callback: v => formatAmt(v) }}, x: { grid: { display: false }}}
+            }
+        });
+        const totalCurr = currData.reduce((a, b) => a + b, 0);
+        const totalPrev = prevData.reduce((a, b) => a + b, 0);
+        const diff = (((totalCurr - totalPrev) / totalPrev) * 100).toFixed(1);
+        document.getElementById('kpiTotalCurr').innerText = formatAmt(totalCurr);
+        document.getElementById('kpiDiff').innerHTML = `전기 대비 <span class="${diff >= 0 ? 'txt-up' : 'txt-down'}">${diff >= 0 ? '▲' : '▼'} ${Math.abs(diff)}%</span>`;
+        document.getElementById('kpiTopPlat').innerText = platNames[currData.indexOf(Math.max(...currData))];
+    }
+
+    function updatePeriod(mode, btn) {
+        document.querySelectorAll('#periodTabs .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        let ranges = { daily: "최근 7일", weekly: "최근 4주", monthly: "최근 4개월", quarterly: "최근 4분기", yearly: "최근 4년" };
+        document.getElementById('mainRange').innerText = ranges[mode];
+        document.getElementById('mainTitle').innerText = "플랫폼별 매출 현황";
+        renderCharts(mode);
+    }
+
+    function applyCustomSearch() {
+        const s = document.getElementById('startAt').value;
+        const e = document.getElementById('endAt').value;
+        if(!s && !e) return alert("날짜를 하나라도 선택해주세요.");
+        document.querySelectorAll('#periodTabs .btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('mainRange').innerText = (s && e) ? `${s} ~ ${e}` : (s ? `${s} ~ 현재` : `시작 ~ ${e}`);
+        document.getElementById('mainTitle').innerText = "사용자 지정 기간 실적";
+        renderCharts('custom', s, e);
+    }
+
+    function downloadCSV(filename, rows) {
+        const content = "\uFEFF" + rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob); link.download = filename; link.click();
+    }
+
+    function downloadBarCSV() {
+        const labels = mainChart.data.labels;
+        const prev = mainChart.data.datasets[0].data;
+        const curr = mainChart.data.datasets[1].data;
+        const rows = [["플랫폼", "이전 실적", "현재 실적", "성장률"]];
+        labels.forEach((l, i) => {
+            const growth = (((curr[i] - prev[i]) / prev[i]) * 100).toFixed(2) + "%";
+            rows.push([l, prev[i], curr[i], growth]);
+        });
+        downloadCSV(`플랫폼별_매출비교_${new Date().toLocaleDateString()}.csv`, rows);
+    }
+
+    function downloadLineCSV() {
+        const labels = lineChart.data.labels;
+        const datasets = lineChart.data.datasets;
+        const rows = [["날짜", ...datasets.map(d => d.label)]];
+        labels.forEach((l, i) => {
+            rows.push([l, ...datasets.map(d => d.data[i])]);
+        });
+        downloadCSV(`플랫폼별_매출추이_${new Date().toLocaleDateString()}.csv`, rows);
+    }
+
+    updatePeriod('monthly', document.querySelector('.btn.active'));
+</script>
+</body>
+</html>
