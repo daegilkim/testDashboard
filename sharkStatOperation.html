@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Shark Stats Admin - Multi Hero</title>
+    <style>
+        :root { --primary-color: #007bff; --success-color: #28a745; --danger-color: #dc3545; }
+        body { font-family: sans-serif; background-color: #f4f7f6; margin: 0; }
+        
+        /* Modal Style */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; width: 600px; max-height: 85vh; border-radius: 12px; position: relative; padding: 25px; overflow-y: auto; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; border: none; background: none; color: #aaa; }
+        
+        h2 { margin-top: 0; font-size: 1.1em; color: var(--primary-color); display: flex; justify-content: space-between; align-items: center; }
+        section { margin-bottom: 25px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        
+        .input-group { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .input-group label { font-size: 0.85em; color: #555; font-weight: bold; }
+        .input-field { display: flex; align-items: center; }
+        .input-field input { width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; }
+        .unit { width: 30px; margin-left: 5px; font-size: 0.8em; color: #888; }
+
+        /* Hero Shark Item Style */
+        .hero-item { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative; }
+        .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        
+        /* Buttons */
+        .btn { border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-add { background: var(--primary-color); padding: 5px 12px; font-size: 0.8em; }
+        .btn-del { background: var(--danger-color); padding: 3px 8px; font-size: 0.75em; }
+        .btn-save { width: 100%; padding: 15px; background: var(--success-color); font-size: 1em; margin-top: 10px; }
+        
+        .open-trigger { margin: 50px; padding: 15px 30px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<button class="open-trigger" onclick="toggleModal(true)">운영툴: 스탯 조정 팝업</button>
+
+<div id="sharkModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <button class="close-btn" onclick="toggleModal(false)">&times;</button>
+        <h1 style="text-align: center; margin-bottom: 25px;">🦈 Shark Stats Admin</h1>
+
+        <section>
+            <h2>1. Mega Shark</h2>
+            <div class="input-group"><label>Catch Ratio</label><div class="input-field"><input type="number" id="ms-catch"><span class="unit">%</span></div></div>
+            <div class="input-group"><label>Credit</label><div class="input-field"><input type="number" id="ms-credit"><span class="unit">%</span></div></div>
+            <div class="input-group"><label>EXP</label><div class="input-field"><input type="number" id="ms-exp"><span class="unit">%</span></div></div>
+        </section>
+
+        <section>
+            <h2>2. Shark</h2>
+            <div class="input-group"><label>Catch Ratio</label><div class="input-field"><input type="number" id="s-catch"><span class="unit">%</span></div></div>
+            <div class="input-group"><label>Credit</label><div class="input-field"><input type="number" id="s-credit"><span class="unit">%</span></div></div>
+            <div class="input-group"><label>EXP</label><div class="input-field"><input type="number" id="s-exp"><span class="unit">%</span></div></div>
+        </section>
+
+        <section id="hero-section">
+            <h2>
+                3. Hero Shark List
+                <button class="btn btn-add" onclick="addHeroItem()">+ 항목 추가</button>
+            </h2>
+            <div id="hero-container">
+                </div>
+        </section>
+
+        <button class="btn btn-save" onclick="saveAndApply()">설정 저장 및 데이터 반영</button>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'shark_stats_v2';
+
+    function toggleModal(show) {
+        document.getElementById('sharkModal').style.display = show ? 'flex' : 'none';
+        if (show) loadStats();
+    }
+
+    // Hero Shark 항목 HTML 템플릿
+    function createHeroItemHTML(data = {id:'', cool:0, respawn:0, max:0}) {
+        const div = document.createElement('div');
+        div.className = 'hero-item';
+        div.innerHTML = `
+            <div class="hero-header">
+                <strong>Hero Shark Entry</strong>
+                <button class="btn btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
+            </div>
+            <div class="input-group"><label>Shark Id</label><div class="input-field"><input type="number" class="hs-id" value="${data.id}"> <span class="unit">ID</span></div></div>
+            <div class="input-group"><label>Spawn Cooltime</label><div class="input-field"><input type="number" class="hs-cool" value="${data.cool}"> <span class="unit">s</span></div></div>
+            <div class="input-group"><label>Respawn Count</label><div class="input-field"><input type="number" class="hs-respawn" value="${data.respawn}"> <span class="unit">ea</span></div></div>
+            <div class="input-group"><label>Max Spawn Count</label><div class="input-field"><input type="number" class="hs-max" value="${data.max}"> <span class="unit">ea</span></div></div>
+        `;
+        return div;
+    }
+
+    function addHeroItem(data) {
+        document.getElementById('hero-container').appendChild(createHeroItemHTML(data));
+    }
+
+    function loadStats() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        
+        const data = JSON.parse(saved);
+        
+        // Basic Sharks
+        document.getElementById('ms-catch').value = data.megaShark.catchRatio;
+        document.getElementById('ms-credit').value = data.megaShark.credit;
+        document.getElementById('ms-exp').value = data.megaShark.exp;
+        document.getElementById('s-catch').value = data.shark.catchRatio;
+        document.getElementById('s-credit').value = data.shark.credit;
+        document.getElementById('s-exp').value = data.shark.exp;
+
+        // Hero Sharks
+        const container = document.getElementById('hero-container');
+        container.innerHTML = ''; // 초기화
+        data.heroSharks.forEach(hero => addHeroItem(hero));
+    }
+
+    function saveAndApply() {
+        // Hero Shark 데이터 수집
+        const heroItems = document.querySelectorAll('.hero-item');
+        const heroList = Array.from(heroItems).map(item => ({
+            id: Number(item.querySelector('.hs-id').value),
+            spawnCooltime: Number(item.querySelector('.hs-cool').value),
+            respawnCount: Number(item.querySelector('.hs-respawn').value),
+            maxSpawnCount: Number(item.querySelector('.hs-max').value)
+        }));
+
+        const finalData = {
+            megaShark: {
+                catchRatio: Number(document.getElementById('ms-catch').value),
+                credit: Number(document.getElementById('ms-credit').value),
+                exp: Number(document.getElementById('ms-exp').value)
+            },
+            shark: {
+                catchRatio: Number(document.getElementById('s-catch').value),
+                credit: Number(document.getElementById('s-credit').value),
+                exp: Number(document.getElementById('s-exp').value)
+            },
+            heroSharks: heroList
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+        console.log("Applied Data:", finalData);
+        alert("모든 데이터가 저장되었습니다.");
+        toggleModal(false);
+    }
+
+    // 초기 실행
+    window.onload = loadStats;
+</script>
+
+</body>
+</html>
