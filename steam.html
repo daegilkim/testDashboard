@@ -2,28 +2,25 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Sales Analytics Dashboard - Standard v9</title>
+    <title>Game Sales Management Dashboard v10</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #3498db; --success: #2ecc71; --danger: #e74c3c; --dark: #2c3e50; --bg: #f4f7f9; }
         body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--dark); }
         .container { max-width: 1500px; margin: auto; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
-        
-        /* 툴바 필터 간소화 */
         .toolbar { display: flex; justify-content: space-between; align-items: center; }
         .filters { display: flex; gap: 12px; align-items: center; font-size: 14px; }
         select, input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
         .btn-csv { background: #27ae60; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
+        /* KPI 그리드: 수수료 포함 5칸으로 확장 */
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 25px; }
         .kpi-card { text-align: center; border-bottom: 4px solid #eee; }
-        .kpi-card h3 { font-size: 13px; color: #888; margin: 0; text-transform: uppercase; }
-        .kpi-card .val { font-size: 26px; font-weight: 800; margin-top: 10px; }
+        .kpi-card h3 { font-size: 13px; color: #888; margin: 0; }
+        .kpi-card .val { font-size: 22px; font-weight: 800; margin-top: 10px; }
 
-        .chart-container { position: relative; height: 550px; width: 100%; }
-        
-        /* 상세 테이블 */
+        .chart-container { position: relative; height: 500px; width: 100%; }
         .table-card { padding: 0; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { padding: 12px; text-align: right; border-bottom: 1px solid #eee; }
@@ -37,7 +34,7 @@
 <div class="container">
     <div class="card toolbar">
         <div class="filters">
-            <strong>📊 분석 기간:</strong>
+            <strong>📅 분석 기간:</strong>
             <select id="periodPreset" onchange="applyPreset()">
                 <option value="7">최근 1주</option>
                 <option value="30" selected>최근 1달</option>
@@ -50,19 +47,20 @@
     </div>
 
     <div class="kpi-grid">
-        <div class="card kpi-card"><h3>Gross Sales</h3><div id="k-gross" class="val">$0</div></div>
+        <div class="card kpi-card"><h3>Total Gross</h3><div id="k-gross" class="val">$0</div></div>
+        <div class="card kpi-card"><h3>Total Tax</h3><div id="k-tax" class="val" style="color:var(--danger)">$0</div></div>
         <div class="card kpi-card"><h3>Total Refunds</h3><div id="k-ref" class="val" style="color:var(--danger)">$0</div></div>
         <div class="card kpi-card"><h3>Net Profit</h3><div id="k-net" class="val" style="color:var(--success)">$0</div></div>
         <div class="card kpi-card"><h3>Refund Rate</h3><div id="k-rate" class="val">0%</div></div>
     </div>
 
     <div class="card">
-        <h2 style="margin-top:0; font-size:18px; margin-bottom: 10px;">국가별 순수익 분석 (Daily Net Profit)</h2>
+        <h2 style="margin-top:0; font-size:18px; margin-bottom: 10px;">국가별 순수익 분석</h2>
         <div class="chart-container"><canvas id="mainChart"></canvas></div>
     </div>
 
     <div class="card table-card">
-        <div style="max-height:450px; overflow-y:auto;">
+        <div style="max-height:400px; overflow-y:auto;">
             <table>
                 <thead>
                     <tr><th style="text-align:left">날짜</th><th>Gross ($)</th><th>수수료 ($)</th><th>환불 ($)</th><th>순수익 (Net, $)</th></tr>
@@ -78,7 +76,6 @@ const COLORS = ['#3498db', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#95a5a6'
 let rawData = [];
 let mainChart;
 
-// 1. 데이터 시뮬레이션
 const initData = () => {
     const countries = ['US', 'KR', 'JP', 'DE', 'GB', 'RU', 'CH', 'CA'];
     let d = new Date('2025-01-01');
@@ -87,23 +84,20 @@ const initData = () => {
         countries.forEach(cc => {
             const gross = Math.random() * 400 + 50;
             const refund = Math.random() > 0.94 ? gross * 0.75 : 0;
-            const tax = gross * 0.3;
-            rawData.push({ date: dateStr, country: cc, gross: gross, tax: tax, refund: refund, net: (gross - tax) - refund });
+            const tax = gross * 0.3; // 30% 수수료
+            rawData.push({ date: dateStr, country: cc, gross, tax, refund, net: (gross - tax) - refund });
         });
         d.setDate(d.getDate() + 1);
     }
 };
 
-// 2. 바 상단 합계 텍스트 플러그인
 const topSumPlugin = {
     id: 'topSumPlugin',
     afterDatasetsDraw(chart) {
         const { ctx, scales: { x, y } } = chart;
         ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillStyle = '#2c3e50';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#2c3e50';
         chart.data.labels.forEach((label, i) => {
             let total = 0;
             chart.data.datasets.forEach(dataset => { total += dataset.data[i]; });
@@ -115,20 +109,18 @@ const topSumPlugin = {
     }
 };
 
-// 3. 필터링 및 차트 업데이트
 function updateDashboard() {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
     const filtered = rawData.filter(d => d.date >= start && d.date <= end);
 
-    // KPI 계산
-    const kpi = filtered.reduce((a, c) => { a.g += c.gross; a.r += c.refund; a.n += c.net; return a; }, { g:0, r:0, n:0 });
+    const kpi = filtered.reduce((a, c) => { a.g += c.gross; a.t += c.tax; a.r += c.refund; a.n += c.net; return a; }, { g:0, t:0, r:0, n:0 });
     document.getElementById('k-gross').innerText = '$' + kpi.g.toLocaleString(undefined, {maximumFractionDigits:0});
+    document.getElementById('k-tax').innerText = '-$' + kpi.t.toLocaleString(undefined, {maximumFractionDigits:0});
     document.getElementById('k-ref').innerText = '-$' + kpi.r.toLocaleString(undefined, {maximumFractionDigits:0});
     document.getElementById('k-net').innerText = '$' + kpi.n.toLocaleString(undefined, {maximumFractionDigits:0});
     document.getElementById('k-rate').innerText = ((kpi.r / kpi.g) * 100).toFixed(1) + '%';
 
-    // 국가 상위 5개 추출
     const countryAgg = filtered.reduce((a, c) => { a[c.country] = (a[c.country] || 0) + c.net; return a; }, {});
     const top5 = Object.entries(countryAgg).sort((a,b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
     const dailyLabels = [...new Set(filtered.map(d => d.date))].sort();
@@ -152,36 +144,30 @@ function updateDashboard() {
             interaction: { mode: 'index', intersect: false },
             scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
             plugins: { 
-                legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10 } },
+                legend: { display: true, position: 'top', align: 'end' },
                 tooltip: { 
-                    backgroundColor: 'rgba(44, 62, 80, 0.95)',
-                    padding: 12,
                     callbacks: {
                         title: (items) => items[0].label,
                         footer: (items) => {
-                            let sum = 0;
-                            items.forEach(i => sum += i.raw);
+                            let sum = 0; items.forEach(i => sum += i.raw);
                             return `\nDaily Total Net: $${sum.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
                         }
                     },
-                    footerFont: { size: 14, weight: 'bold' },
-                    footerColor: '#2ecc71'
+                    footerFont: { size: 14, weight: 'bold' }, footerColor: '#2ecc71'
                 } 
             }
         }
     });
 
-    // 테이블 렌더링 (환불 0 처리 적용)
     const tableRows = dailyLabels.map(date => {
         const day = filtered.filter(f => f.date === date);
         const g = day.reduce((a,c)=>a+c.gross,0), t = day.reduce((a,c)=>a+c.tax,0), r = day.reduce((a,c)=>a+c.refund,0), n = day.reduce((a,c)=>a+c.net,0);
         const refundTd = r > 0 ? `<td class="neg-val">-${r.toFixed(2)}</td>` : `<td>${r.toFixed(2)}</td>`;
-        return `<tr><td style="text-align:left">${date}</td><td>${g.toFixed(2)}</td><td>${t.toFixed(2)}</td>${refundTd}<td style="font-weight:bold">$${n.toFixed(2)}</td></tr>`;
+        return `<tr><td style="text-align:left">${date}</td><td>${g.toFixed(2)}</td><td class="neg-val">-${t.toFixed(2)}</td>${refundTd}<td style="font-weight:bold">$${n.toFixed(2)}</td></tr>`;
     }).reverse();
     document.getElementById('detailTableBody').innerHTML = tableRows.join('');
 }
 
-// 4. CSV 추출 (리포트형)
 function downloadCSV() {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
@@ -190,14 +176,12 @@ function downloadCSV() {
     const countries = [...new Set(filtered.map(d => d.country))].sort();
 
     let csv = "\uFEFFDate," + countries.join(" Net,") + " Net,Total Gross,Total Tax,Total Refund,Daily Total Net\n";
-
     dailyLabels.forEach(date => {
         let row = [date], dayG = 0, dayT = 0, dayR = 0, dayN = 0;
         countries.forEach(cc => {
             const countryDay = filtered.filter(f => f.date === date && f.country === cc);
             const n = countryDay.reduce((a,c)=>a+c.net,0), g = countryDay.reduce((a,c)=>a+c.gross,0), t = countryDay.reduce((a,c)=>a+c.tax,0), r = countryDay.reduce((a,c)=>a+c.refund,0);
-            row.push(n.toFixed(2));
-            dayG += g; dayT += t; dayR += r; dayN += n;
+            row.push(n.toFixed(2)); dayG += g; dayT += t; dayR += r; dayN += n;
         });
         row.push(dayG.toFixed(2), dayT.toFixed(2), dayR.toFixed(2), dayN.toFixed(2));
         csv += row.join(",") + "\n";
@@ -206,17 +190,14 @@ function downloadCSV() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Sales_Full_Report_${start}_to_${end}.csv`;
+    link.download = `Sales_Full_Report_${start}.csv`;
     link.click();
 }
 
-// 5. 간소화된 최근 N일 프리셋 로직
 function applyPreset() {
     const days = parseInt(document.getElementById('periodPreset').value);
-    const end = new Date('2026-04-17'); 
-    let start = new Date('2026-04-17');
+    const end = new Date('2026-04-17'); let start = new Date('2026-04-17');
     start.setDate(end.getDate() - days);
-    
     document.getElementById('startDate').value = start.toISOString().split('T')[0];
     document.getElementById('endDate').value = end.toISOString().split('T')[0];
     updateDashboard();
