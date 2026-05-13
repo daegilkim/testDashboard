@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUB — Hero Configuration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f4f5f7; --bg2:#ffffff; --bg3:#f0f1f4;
+  --border:#e2e4ea; --border2:#c8cbd6;
+  --text:#1a1d26; --text2:#555c72; --text3:#8c93a8;
+  --accent:#3b6ef5; --success:#0da678; --warning:#d48a0a; --danger:#e03c3c;
+  --shark:#0891b2;
+  --dlc:#7c5ce8; --event:#0891b2; --champ:#ea6d1a; --season:#16a34a;
+  --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --radius:6px; --radius-lg:10px;
+}
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.5; }
+.layout { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
+.sidebar { background:var(--bg2); border-right:1px solid var(--border); padding:24px 0; position:sticky; top:0; height:100vh; }
+.sidebar-logo { padding:0 20px 24px; font-size:13px; font-weight:500; letter-spacing:.12em; color:var(--text3); text-transform:uppercase; border-bottom:1px solid var(--border); }
+.sidebar-logo span { color:var(--accent); font-family:var(--mono); font-size:15px; }
+.sidebar-section { padding:16px 12px 8px; font-size:11px; letter-spacing:.1em; color:var(--text3); text-transform:uppercase; }
+.sidebar-item { display:flex; align-items:center; gap:10px; padding:9px 20px; color:var(--text2); cursor:pointer; font-size:13.5px; transition:all .15s; border-left:2px solid transparent; }
+.sidebar-item:hover { background:var(--bg3); color:var(--text); }
+.sidebar-item.active { background:rgba(59,110,245,.07); color:var(--accent); border-left-color:var(--accent); }
+.sidebar-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.main { display:flex; flex-direction:column; }
+.topbar { background:var(--bg2); border-bottom:1px solid var(--border); padding:0 32px; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+.topbar-left { display:flex; flex-direction:column; gap:1px; }
+.topbar-title { font-size:15px; font-weight:500; }
+.topbar-breadcrumb { font-size:12px; color:var(--text3); font-family:var(--mono); }
+.topbar-breadcrumb span { color:var(--text2); }
+.topbar-actions { display:flex; gap:8px; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:var(--radius); font-size:13px; font-family:var(--font); font-weight:500; cursor:pointer; transition:all .15s; border:none; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#5580ff; }
+.btn-ghost { background:transparent; color:var(--text2); border:1px solid var(--border2); }
+.btn-ghost:hover { background:var(--bg3); color:var(--text); }
+.btn-csv { background:transparent; color:var(--success); border:1px solid rgba(13,166,120,.35); }
+.btn-csv:hover { background:rgba(13,166,120,.07); }
+.btn-danger-ghost { background:transparent; color:var(--danger); border:1px solid rgba(224,60,60,.3); padding:5px 10px; font-size:12px; }
+.btn-danger-ghost:hover { background:rgba(224,60,60,.06); }
+.content { padding:28px 32px; flex:1; }
+.tabs { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); }
+.tab { padding:10px 18px; font-size:13.5px; color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; font-weight:500; }
+.tab:hover { color:var(--text2); }
+.tab.active { color:var(--text); border-bottom-color:var(--accent); }
+.tab-badge { display:inline-block; padding:1px 7px; border-radius:99px; font-size:11px; margin-left:6px; font-weight:400; }
+.tab-badge.dlc { background:rgba(124,92,232,.1); color:var(--dlc); }
+.tab-badge.event { background:rgba(8,145,178,.1); color:var(--event); }
+.tab-badge.champ { background:rgba(234,109,26,.1); color:var(--champ); }
+.tab-badge.season { background:rgba(22,163,74,.1); color:var(--season); }
+.table-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.table-info { font-size:13px; color:var(--text3); }
+.table-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:auto; }
+table { width:100%; border-collapse:collapse; min-width:1060px; }
+thead tr { background:var(--bg3); border-bottom:1px solid var(--border); }
+thead th { padding:10px 14px; text-align:left; font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--text3); font-weight:500; white-space:nowrap; }
+tbody tr { border-bottom:1px solid var(--border); transition:background .1s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:rgba(0,0,0,.015); }
+tbody td { padding:10px 14px; font-size:13px; color:var(--text); vertical-align:middle; }
+tbody tr.group-start td { border-top:2px solid var(--border2); }
+tbody tr.sub-row td { border-top:1px dashed var(--border); background:rgba(8,145,178,.02); }
+.kind-label { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:99px; white-space:nowrap; }
+.kind-label.fish { background:rgba(59,110,245,.08); color:var(--accent); }
+.kind-label.shark { background:rgba(8,145,178,.08); color:var(--shark); }
+.kind-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.type-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:99px; font-size:12px; font-weight:500; white-space:nowrap; }
+.type-badge.dlc { background:rgba(124,92,232,.08); color:var(--dlc); }
+.type-badge.event { background:rgba(8,145,178,.08); color:var(--event); }
+.type-badge.champ { background:rgba(234,109,26,.08); color:var(--champ); }
+.type-badge.season { background:rgba(22,163,74,.08); color:var(--season); }
+.type-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.id-code { font-family:var(--mono); font-size:12px; color:var(--text2); background:var(--bg3); padding:2px 7px; border-radius:4px; white-space:nowrap; }
+.period-text { font-family:var(--mono); font-size:11.5px; color:var(--text2); white-space:nowrap; }
+.stat-val { font-family:var(--mono); font-size:12.5px; color:var(--accent); font-weight:500; }
+.stat-val.shark { color:var(--shark); }
+.stat-empty { font-family:var(--mono); font-size:12px; color:var(--border2); }
+.spawn-main { font-family:var(--mono); font-size:12.5px; font-weight:500; }
+.spawn-main.shark { color:var(--shark); }
+.fish-list-cell { display:flex; flex-direction:column; gap:3px; }
+.fish-chip { font-family:var(--mono); font-size:11.5px; color:var(--text2); }
+.toggle { width:36px; height:20px; border-radius:99px; background:var(--border2); position:relative; cursor:pointer; transition:background .2s; border:none; flex-shrink:0; }
+.toggle.on { background:var(--success); }
+.toggle::after { content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:#fff; top:3px; left:3px; transition:transform .2s; }
+.toggle.on::after { transform:translateX(16px); }
+.icon-btn { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:var(--radius); border:1px solid var(--border); background:transparent; color:var(--text3); cursor:pointer; font-size:13px; transition:all .15s; }
+.icon-btn:hover { background:var(--bg3); color:var(--text); border-color:var(--border2); }
+.icon-btn.danger:hover { background:rgba(224,60,60,.08); color:var(--danger); border-color:rgba(224,60,60,.3); }
+.actions { display:flex; gap:6px; align-items:center; }
+.panel-overlay { position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:100; display:none; align-items:flex-start; justify-content:flex-end; }
+.panel-overlay.open { display:flex; }
+.panel { width:740px; height:100vh; background:var(--bg2); border-left:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; animation:slideIn .2s ease; }
+@keyframes slideIn { from { transform:translateX(40px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+.panel-header { padding:18px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg2); z-index:1; }
+.panel-title { font-size:15px; font-weight:500; }
+.panel-body { padding:24px; flex:1; }
+.panel-footer { padding:14px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; position:sticky; bottom:0; background:var(--bg2); }
+.form-section { margin-bottom:26px; }
+.form-section-title { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.form-row.triple { grid-template-columns:1fr 1fr 1fr; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+label { font-size:12px; color:var(--text3); font-weight:500; letter-spacing:.04em; }
+input[type="text"],input[type="number"],input[type="date"],select { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-family:var(--font); font-size:13.5px; padding:8px 12px; outline:none; transition:border-color .15s; width:100%; }
+input:focus,select:focus { border-color:var(--accent); }
+input[type="number"] { font-family:var(--mono); }
+select option { background:var(--bg2); }
+.input-suffix { display:flex; align-items:center; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.input-suffix input { border:none; background:transparent; border-radius:0; flex:1; }
+.input-suffix-label { padding:0 10px; color:var(--text3); font-size:12px; border-left:1px solid var(--border); font-family:var(--mono); background:var(--bg2); height:100%; display:flex; align-items:center; }
+.stage-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-lg); margin-bottom:14px; overflow:hidden; }
+.stage-card-header { padding:11px 16px; background:var(--bg3); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); gap:12px; flex-wrap:wrap; }
+.stage-card-header-left { display:flex; align-items:center; gap:12px; flex:1; min-width:200px; }
+.stage-card-header-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.stage-card-body { padding:14px 16px; }
+.stage-period-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.stage-period-label { font-size:12px; color:var(--text3); font-weight:500; min-width:80px; }
+.entity-section { border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
+.entity-section-header { padding:8px 14px; display:flex; align-items:center; gap:8px; }
+.entity-section-header.fish { background:rgba(59,110,245,.06); border-bottom:1px solid rgba(59,110,245,.12); }
+.entity-section-header.shark { background:rgba(8,145,178,.06); border-bottom:1px solid rgba(8,145,178,.12); }
+.entity-section-title { font-size:11.5px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; }
+.entity-section-title.fish { color:var(--accent); }
+.entity-section-title.shark { color:var(--shark); }
+.entity-section-body { padding:10px 12px; background:var(--bg2); }
+.fish-item { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; overflow:hidden; }
+.fish-item-header { padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background:var(--bg2); }
+.fish-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 12px; }
+.override-row { display:flex; align-items:center; gap:8px; }
+.override-checkbox { width:14px; height:14px; accent-color:var(--accent); cursor:pointer; flex-shrink:0; }
+.override-label { font-size:12px; color:var(--text3); font-family:var(--mono); min-width:72px; }
+.override-input { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--mono); font-size:12px; padding:5px 8px; outline:none; transition:all .15s; }
+.override-input:disabled { opacity:.35; pointer-events:none; }
+.override-input:focus { border-color:var(--accent); }
+.pool-rate-bar { margin:8px 0 3px; height:3px; background:var(--border); border-radius:99px; overflow:hidden; }
+.pool-rate-fill { height:100%; background:var(--success); border-radius:99px; transition:width .3s; }
+.pool-rate-fill.warn { background:var(--warning); }
+.pool-rate-fill.error { background:var(--danger); }
+.pool-rate-info { display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:6px; }
+.pool-rate-total { font-family:var(--mono); font-weight:500; }
+.pool-rate-total.ok { color:var(--success); }
+.pool-rate-total.warn { color:var(--warning); }
+.pool-rate-total.error { color:var(--danger); }
+.add-entity-btn { width:100%; padding:7px; background:transparent; border:1px dashed var(--border2); border-radius:var(--radius); color:var(--text3); font-size:12px; cursor:pointer; font-family:var(--font); display:flex; align-items:center; justify-content:center; gap:6px; transition:all .15s; margin-top:4px; }
+.add-entity-btn.fish:hover { border-color:var(--accent); color:var(--accent); background:rgba(59,110,245,.04); }
+.add-entity-btn.shark:hover { border-color:var(--shark); color:var(--shark); background:rgba(8,145,178,.04); }
+.add-stage-btn { width:100%; padding:10px; background:transparent; border:1px dashed var(--border2); border-radius:var(--radius-lg); color:var(--text3); font-size:13px; cursor:pointer; font-family:var(--font); display:flex; align-items:center; justify-content:center; gap:6px; transition:all .15s; }
+.add-stage-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(59,110,245,.04); }
+.empty-state { text-align:center; padding:48px 24px; color:var(--text3); }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius-lg); padding:11px 16px; font-size:13px; z-index:200; display:flex; align-items:center; gap:10px; animation:toastIn .2s ease; box-shadow:0 4px 20px rgba(0,0,0,.1); }
+@keyframes toastIn { from { transform:translateY(10px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><span>HUB</span>&nbsp; Operations</div>
+    <div class="sidebar-section">Content</div>
+    <div class="sidebar-item active"><div class="sidebar-dot" style="background:var(--accent)"></div>Hero Configuration</div>
+    <div class="sidebar-item"><div class="sidebar-dot" style="background:var(--text3)"></div>Leaderboard</div>
+    <div class="sidebar-item"><div class="sidebar-dot" style="background:var(--text3)"></div>Events</div>
+    <div class="sidebar-section">System</div>
+    <div class="sidebar-item"><div class="sidebar-dot" style="background:var(--text3)"></div>Settings</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Hero Configuration</div>
+        <div class="topbar-breadcrumb">HUB / <span>Hero Configuration</span></div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-csv" onclick="exportCSV()">↓ Export CSV</button>
+        <button class="btn btn-primary" onclick="openPanel()">+ Add Configuration</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="tabs">
+        <div class="tab active" onclick="setTab(this,'all')">All <span class="tab-badge dlc" id="badge-all">0</span></div>
+        <div class="tab" onclick="setTab(this,'DLC')">DLC <span class="tab-badge dlc" id="badge-dlc">0</span></div>
+        <div class="tab" onclick="setTab(this,'EVENT')">Event <span class="tab-badge event" id="badge-event">0</span></div>
+        <div class="tab" onclick="setTab(this,'CHAMPIONSHIP')">Championship <span class="tab-badge champ" id="badge-champ">0</span></div>
+        <div class="tab" onclick="setTab(this,'SEASON_EVENT')">Season Event <span class="tab-badge season" id="badge-season">0</span></div>
+      </div>
+      <div class="table-header">
+        <div class="table-info" id="table-info"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Content Type</th>
+              <th>Name</th>
+              <th>Stage ID</th>
+              <th>Period / DLC ID</th>
+              <th>Kind</th>
+              <th>Entity ID</th>
+              <th>Spawn Rate</th>
+              <th>Life</th>
+              <th>Power</th>
+              <th>Recovery</th>
+              <th>Bonus</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="config-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel-overlay" id="panel-overlay" onclick="handleOverlayClick(event)">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title" id="panel-title">Add Configuration</div>
+      <button class="icon-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="form-section">
+        <div class="form-section-title">Basic Info</div>
+        <div class="form-row triple">
+          <div class="form-group">
+            <label>Content Type</label>
+            <select id="f-type" onchange="onTypeChange()">
+              <option value="">Select...</option>
+              <option value="DLC">DLC</option>
+              <option value="EVENT">Event</option>
+              <option value="CHAMPIONSHIP">Championship</option>
+              <option value="SEASON_EVENT">Season Event</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="f-name" placeholder="e.g. City Adventure">
+          </div>
+          <div class="form-group" id="f-dlcid-group" style="display:none">
+            <label>DLC ID</label>
+            <input type="text" id="f-dlcid" placeholder="e.g. DLC_City">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <label style="min-width:48px;margin:0">Active</label>
+          <button class="toggle on" id="f-active-toggle" onclick="toggleActive()"></button>
+          <span id="f-active-label" style="font-size:13px;color:var(--success)">Active</span>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Stages</div>
+        <div id="stages-container"></div>
+        <button class="add-stage-btn" onclick="addStage()">+ Add Stage</button>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="display:none" class="toast">
+  <span style="color:var(--success);font-size:15px">✓</span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+const STAT_FIELDS = ['life','power','recovery','bonus'];
+
+let configs = [
+  {
+    id:'cfg-001', type:'DLC', name:'City Adventure', dlcId:'DLC_City', active:true,
+    stages:[
+      { stageId:'stage_city_01', fishSpawnRate:10, sharkSpawnRate:5,
+        heroFish:[
+          { fishId:'fish_dragon', poolRate:60, overrides:{ life:1200, power:80 } },
+          { fishId:'fish_phoenix', poolRate:40, overrides:{ power:95, bonus:20 } }
+        ],
+        heroShark:[
+          { fishId:'shark_white', poolRate:70, overrides:{ life:3000, power:130 } },
+          { fishId:'shark_hammer', poolRate:30, overrides:{ bonus:40 } }
+        ]
+      },
+      { stageId:'stage_city_02', fishSpawnRate:8, sharkSpawnRate:4,
+        heroFish:[{ fishId:'fish_leviathan', poolRate:100, overrides:{ life:2000, recovery:45 } }],
+        heroShark:[{ fishId:'shark_bull', poolRate:100, overrides:{ life:5000, recovery:60 } }]
+      }
+    ]
+  },
+  {
+    id:'cfg-002', type:'DLC', name:'Ocean Depths', dlcId:'DLC_Ocean', active:false,
+    stages:[
+      { stageId:'stage_ocean_01', fishSpawnRate:12, sharkSpawnRate:8,
+        heroFish:[{ fishId:'fish_kraken', poolRate:100, overrides:{ life:3000, power:120 } }],
+        heroShark:[{ fishId:'shark_megalodon', poolRate:100, overrides:{ life:8000, power:250 } }]
+      }
+    ]
+  },
+  {
+    id:'cfg-003', type:'EVENT', name:'Spring Festival', active:true,
+    stages:[
+      { stageId:'stage_event_01', validFrom:'2026-05-01', validUntil:'2026-05-15', fishSpawnRate:15, sharkSpawnRate:10,
+        heroFish:[
+          { fishId:'fish_aurora', poolRate:50, overrides:{ power:110, bonus:30 } },
+          { fishId:'fish_comet', poolRate:50, overrides:{ recovery:80 } }
+        ],
+        heroShark:[{ fishId:'shark_mako', poolRate:100, overrides:{ power:180, bonus:40 } }]
+      },
+      { stageId:'stage_event_02', validFrom:'2026-05-16', validUntil:'2026-05-31', fishSpawnRate:10, sharkSpawnRate:7,
+        heroFish:[{ fishId:'fish_nebula', poolRate:100, overrides:{ life:900, power:75 } }],
+        heroShark:[{ fishId:'shark_tiger', poolRate:100, overrides:{ recovery:100, bonus:20 } }]
+      }
+    ]
+  },
+  {
+    id:'cfg-004', type:'CHAMPIONSHIP', name:'World Cup 2026', active:true,
+    stages:[
+      { stageId:'stage_champ_01', validFrom:'2026-06-01', validUntil:'2026-06-15', fishSpawnRate:20, sharkSpawnRate:15,
+        heroFish:[
+          { fishId:'fish_titan', poolRate:70, overrides:{ life:5000, power:200, recovery:50 } },
+          { fishId:'fish_colossus', poolRate:30, overrides:{ life:3500, bonus:100 } }
+        ],
+        heroShark:[{ fishId:'shark_great', poolRate:100, overrides:{ life:9000, power:300 } }]
+      },
+      { stageId:'stage_champ_02', validFrom:'2026-06-16', validUntil:'2026-06-30', fishSpawnRate:25, sharkSpawnRate:20,
+        heroFish:[{ fishId:'fish_behemoth', poolRate:100, overrides:{ life:8000, power:300 } }],
+        heroShark:[{ fishId:'shark_apex', poolRate:100, overrides:{ life:12000, power:400, bonus:150 } }]
+      }
+    ]
+  },
+  {
+    id:'cfg-005', type:'SEASON_EVENT', name:'Summer Season', active:true,
+    stages:[
+      { stageId:'stage_season_01', validFrom:'2026-07-01', validUntil:'2026-07-31', fishSpawnRate:18, sharkSpawnRate:12,
+        heroFish:[
+          { fishId:'fish_sunfish', poolRate:60, overrides:{ power:130, bonus:50 } },
+          { fishId:'fish_stingray', poolRate:40, overrides:{ recovery:90 } }
+        ],
+        heroShark:[{ fishId:'shark_hammerhead', poolRate:100, overrides:{ life:6000, power:200 } }]
+      },
+      { stageId:'stage_season_02', validFrom:'2026-08-01', validUntil:'2026-09-30', fishSpawnRate:20, sharkSpawnRate:15,
+        heroFish:[{ fishId:'fish_manta', poolRate:100, overrides:{ life:4000, power:160 } }],
+        heroShark:[{ fishId:'shark_blue', poolRate:100, overrides:{ life:7000, power:220, bonus:80 } }]
+      }
+    ]
+  }
+];
+
+let currentTab = 'all';
+let activeToggleState = true;
+let editingId = null;
+let stageCount = 0;
+let fishCount = 0;
+let currentType = '';
+
+function typeLabel(t) { return {DLC:'DLC',EVENT:'Event',CHAMPIONSHIP:'Championship',SEASON_EVENT:'Season Event'}[t]||t; }
+function typeCls(t) { return {DLC:'dlc',EVENT:'event',CHAMPIONSHIP:'champ',SEASON_EVENT:'season'}[t]||''; }
+function hasStagePeriod(t) { return t==='EVENT'||t==='CHAMPIONSHIP'||t==='SEASON_EVENT'; }
+function getFiltered() { return currentTab==='all' ? configs : configs.filter(c=>c.type===currentTab); }
+
+function aggStat(list, field, isShark) {
+  const vals = (list||[]).map(f=>f.overrides?.[field]).filter(v=>v!==undefined&&v!==null);
+  if (!vals.length) return `<td><span class="stat-empty">—</span></td>`;
+  const mn=Math.min(...vals), mx=Math.max(...vals);
+  const cls = isShark ? ' shark' : '';
+  return mn===mx
+    ? `<td><span class="stat-val${cls}">${mn}</span></td>`
+    : `<td><span class="stat-val${cls}" style="font-size:11.5px">${mn}~${mx}</span></td>`;
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const totalStages = filtered.reduce((a,c)=>a+c.stages.length,0);
+  document.getElementById('table-info').textContent =
+    `Showing ${filtered.length} configuration${filtered.length!==1?'s':''} / ${totalStages} stage${totalStages!==1?'s':''}`;
+
+  const tbody = document.getElementById('config-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div style="font-size:28px;opacity:.3;margin-bottom:10px">⬡</div><div>No configurations found</div></div></td></tr>`;
+    updateBadges(); return;
+  }
+
+  const rows = [];
+  filtered.forEach((c, ci) => {
+    const totalRows = c.stages.length * 2; // fish row + shark row per stage
+
+    c.stages.forEach((s, si) => {
+      const isFirst = si === 0;
+
+      const fishSummary = (s.heroFish||[]).map(f=>
+        `<span class="fish-chip">${f.fishId} <span style="color:var(--text3)">${f.poolRate}%</span></span>`
+      ).join('') || '<span class="stat-empty">—</span>';
+      const sharkSummary = (s.heroShark||[]).map(f=>
+        `<span class="fish-chip">${f.fishId} <span style="color:var(--text3)">${f.poolRate}%</span></span>`
+      ).join('') || '<span class="stat-empty">—</span>';
+
+      const periodOrDlc = c.type==='DLC'
+        ? `<span class="id-code">${c.dlcId||'—'}</span>`
+        : (s.validFrom&&s.validUntil)
+          ? `<span class="period-text">${s.validFrom}<br>~ ${s.validUntil}</span>`
+          : `<span class="stat-empty">—</span>`;
+
+      // cfg-level cells span ALL rows of this config
+      let cfgCells = '';
+      if (isFirst) {
+        cfgCells = `
+          <td rowspan="${totalRows}"><span class="id-code">${c.id}</span></td>
+          <td rowspan="${totalRows}"><span class="type-badge ${typeCls(c.type)}"><span class="type-dot"></span>${typeLabel(c.type)}</span></td>
+          <td rowspan="${totalRows}" style="font-weight:500;white-space:nowrap">${c.name||'—'}</td>`;
+      }
+      let actionCell = '';
+      if (isFirst) {
+        actionCell = `<td rowspan="${totalRows}">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+            <button class="toggle ${c.active?'on':''}" onclick="toggleConfig('${c.id}')"></button>
+            <div class="actions">
+              <button class="icon-btn" onclick="editConfig('${c.id}')" title="Edit">✎</button>
+              <button class="icon-btn" onclick="exportCSVById('${c.id}')" title="Download CSV" style="color:var(--success);border-color:rgba(13,166,120,.35)">↓</button>
+              <button class="icon-btn danger" onclick="deleteConfig('${c.id}')" title="Delete">✕</button>
+            </div>
+          </div>
+        </td>`;
+      }
+
+      // stage-level cells span 2 rows
+      const stageCells = `
+        <td rowspan="2"><span class="id-code">${s.stageId}</span></td>
+        <td rowspan="2">${periodOrDlc}</td>`;
+        
+      const fishSpawnCell = `<td><span class="spawn-main">${s.fishSpawnRate ?? 0}%</span></td>`;
+      const sharkSpawnCell = `<td><span class="spawn-main shark">${s.sharkSpawnRate ?? 0}%</span></td>`;
+
+      const groupCls = isFirst && ci > 0 ? ' class="group-start"' : '';
+
+      // Fish row
+      rows.push(`<tr${groupCls}>
+        ${cfgCells}${stageCells}
+        <td><span class="kind-label fish"><span class="kind-dot"></span>Fish</span></td>
+        <td><div class="fish-list-cell">${fishSummary}</div></td>
+        ${fishSpawnCell}
+        ${aggStat(s.heroFish,'life',false)}${aggStat(s.heroFish,'power',false)}${aggStat(s.heroFish,'recovery',false)}${aggStat(s.heroFish,'bonus',false)}
+        ${actionCell}
+      </tr>`);
+
+      // Shark row
+      rows.push(`<tr class="sub-row">
+        <td><span class="kind-label shark"><span class="kind-dot"></span>Shark</span></td>
+        <td><div class="fish-list-cell">${sharkSummary}</div></td>
+        ${sharkSpawnCell}
+        ${aggStat(s.heroShark,'life',true)}${aggStat(s.heroShark,'power',true)}${aggStat(s.heroShark,'recovery',true)}${aggStat(s.heroShark,'bonus',true)}
+      </tr>`);
+    });
+  });
+
+  tbody.innerHTML = rows.join('');
+  updateBadges();
+}
+
+function updateBadges() {
+  document.getElementById('badge-all').textContent   = configs.length;
+  document.getElementById('badge-dlc').textContent   = configs.filter(c=>c.type==='DLC').length;
+  document.getElementById('badge-event').textContent = configs.filter(c=>c.type==='EVENT').length;
+  document.getElementById('badge-champ').textContent = configs.filter(c=>c.type==='CHAMPIONSHIP').length;
+  document.getElementById('badge-season').textContent= configs.filter(c=>c.type==='SEASON_EVENT').length;
+}
+
+function setTab(el, tab) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = tab; renderTable();
+}
+
+function toggleConfig(id) {
+  const c = configs.find(x=>x.id===id);
+  if (c) { c.active=!c.active; renderTable(); showToast(c.active?'Activated':'Deactivated'); }
+}
+
+function deleteConfig(id) {
+  if (confirm('Delete this configuration?')) {
+    configs = configs.filter(x=>x.id!==id);
+    renderTable(); showToast('Configuration deleted');
+  }
+}
+
+function editConfig(id) {
+  editingId = id;
+  const c = configs.find(x=>x.id===id);
+  document.getElementById('panel-title').textContent = 'Edit Configuration';
+  document.getElementById('f-type').value = c.type;
+  document.getElementById('f-type').disabled = true;
+  currentType = c.type;
+  document.getElementById('f-name').value = c.name||'';
+  activeToggleState = c.active;
+  updateActiveToggle();
+  onTypeChange();
+  if (c.type==='DLC') document.getElementById('f-dlcid').value = c.dlcId||'';
+  stageCount = 0;
+  document.getElementById('stages-container').innerHTML = '';
+  c.stages.forEach(s => addStageWithData(s));
+  document.getElementById('panel-overlay').classList.add('open');
+}
+
+function openPanel() {
+  editingId = null;
+  document.getElementById('panel-title').textContent = 'Add Configuration';
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-type').disabled = false;
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-dlcid').value = '';
+  activeToggleState = true;
+  updateActiveToggle();
+  currentType = '';
+  stageCount = 0;
+  document.getElementById('stages-container').innerHTML = '';
+  onTypeChange();
+  document.getElementById('panel-overlay').classList.add('open');
+}
+
+function closePanel() { document.getElementById('panel-overlay').classList.remove('open'); }
+function handleOverlayClick(e) { if (e.target===document.getElementById('panel-overlay')) closePanel(); }
+
+function onTypeChange() {
+  currentType = document.getElementById('f-type').value;
+  document.getElementById('f-dlcid-group').style.display = currentType==='DLC' ? '' : 'none';
+  document.querySelectorAll('.stage-period-row').forEach(el => {
+    el.style.display = hasStagePeriod(currentType) ? '' : 'none';
+  });
+}
+
+function toggleActive() { activeToggleState=!activeToggleState; updateActiveToggle(); }
+function updateActiveToggle() {
+  const btn = document.getElementById('f-active-toggle');
+  const lbl = document.getElementById('f-active-label');
+  btn.className = 'toggle'+(activeToggleState?' on':'');
+  lbl.textContent = activeToggleState?'Active':'Inactive';
+  lbl.style.color = activeToggleState?'var(--success)':'var(--text3)';
+}
+
+function addStage() {
+  addStageWithData({ stageId:'', fishSpawnRate:10, sharkSpawnRate:10, validFrom:'', validUntil:'', heroFish:[], heroShark:[] });
+}
+
+function addStageWithData(data) {
+  const sid = stageCount++;
+  const container = document.getElementById('stages-container');
+  const div = document.createElement('div');
+  div.className = 'stage-card';
+  div.id = `stage-${sid}`;
+  const showPeriod = hasStagePeriod(currentType);
+
+  div.innerHTML = `
+    <div class="stage-card-header">
+      <div class="stage-card-header-left">
+        <input type="text" value="${data.stageId}" placeholder="Stage ID (e.g. stage_event_01)"
+          style="background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;flex:1;min-width:160px;"
+          id="stage-id-${sid}">
+      </div>
+      <div class="stage-card-header-right">
+        <button class="btn btn-danger-ghost" onclick="removeStage(${sid})">Remove</button>
+      </div>
+    </div>
+    <div class="stage-card-body">
+      <div class="stage-period-row" style="display:${showPeriod?'flex':'none'}">
+        <span class="stage-period-label">Period</span>
+        <div class="input-suffix" style="width:150px">
+          <input type="date" id="stage-from-${sid}" value="${data.validFrom||''}" style="font-size:12px;padding:6px 8px;">
+        </div>
+        <span style="font-size:12px;color:var(--text3);padding:0 4px">~</span>
+        <div class="input-suffix" style="width:150px">
+          <input type="date" id="stage-until-${sid}" value="${data.validUntil||''}" style="font-size:12px;padding:6px 8px;">
+        </div>
+      </div>
+      <div class="entity-section">
+        <div class="entity-section-header fish">
+          <span class="kind-dot" style="background:var(--accent)"></span>
+          <span class="entity-section-title fish">Hero Fish</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:11px;color:var(--accent);letter-spacing:0;text-transform:none;font-weight:600;">Spawn Rate</span>
+            <div class="input-suffix" style="width:85px;background:var(--bg2);">
+              <input type="number" min="0" max="100" step="0.1" value="${data.fishSpawnRate ?? 0}" id="spawn-rate-fish-${sid}" style="padding:4px 6px;font-size:12px;height:26px;">
+              <span class="input-suffix-label" style="padding:0 6px;height:26px;font-size:11px">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="entity-section-body">
+          <div id="elist-${sid}-fish"></div>
+          <button class="add-entity-btn fish" onclick="addEntity(${sid},'fish')">+ Add Hero Fish</button>
+          <div class="pool-rate-bar"><div class="pool-rate-fill" id="pool-bar-${sid}-fish" style="width:0%"></div></div>
+          <div class="pool-rate-info">
+            <span style="color:var(--text3)">Pool rate total</span>
+            <span class="pool-rate-total" id="pool-total-${sid}-fish">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="entity-section">
+        <div class="entity-section-header shark">
+          <span class="kind-dot" style="background:var(--shark)"></span>
+          <span class="entity-section-title shark">Hero Shark</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:11px;color:var(--shark);letter-spacing:0;text-transform:none;font-weight:600;">Spawn Rate</span>
+            <div class="input-suffix" style="width:85px;background:var(--bg2);">
+              <input type="number" min="0" max="100" step="0.1" value="${data.sharkSpawnRate ?? 0}" id="spawn-rate-shark-${sid}" style="padding:4px 6px;font-size:12px;height:26px;">
+              <span class="input-suffix-label" style="padding:0 6px;height:26px;font-size:11px">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="entity-section-body">
+          <div id="elist-${sid}-shark"></div>
+          <button class="add-entity-btn shark" onclick="addEntity(${sid},'shark')">+ Add Hero Shark</button>
+          <div class="pool-rate-bar"><div class="pool-rate-fill" id="pool-bar-${sid}-shark" style="width:0%"></div></div>
+          <div class="pool-rate-info">
+            <span style="color:var(--text3)">Pool rate total</span>
+            <span class="pool-rate-total" id="pool-total-${sid}-shark">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  container.appendChild(div);
+  (data.heroFish||[]).forEach(f => addEntityWithData(sid, 'fish', f));
+  (data.heroShark||[]).forEach(f => addEntityWithData(sid, 'shark', f));
+}
+
+function removeStage(sid) { const el=document.getElementById(`stage-${sid}`); if(el) el.remove(); }
+
+function addEntity(sid, kind) {
+  addEntityWithData(sid, kind, { fishId:'', poolRate:0, overrides:{} });
+}
+
+function addEntityWithData(sid, kind, data) {
+  const fid = fishCount++;
+  const list = document.getElementById(`elist-${sid}-${kind}`);
+  const accentVar = kind==='shark' ? 'var(--shark)' : 'var(--accent)';
+  const placeholder = kind==='shark' ? 'Shark ID (e.g. shark_white)' : 'Fish ID (e.g. fish_dragon)';
+
+  const div = document.createElement('div');
+  div.className = 'fish-item';
+  div.id = `fish-${fid}`;
+
+  const overrideRows = STAT_FIELDS.map(f => {
+    const checked = data.overrides && data.overrides[f] !== undefined;
+    const val = checked ? data.overrides[f] : '';
+    return `<div class="override-row">
+      <input type="checkbox" class="override-checkbox" id="ov-chk-${fid}-${f}" onchange="toggleOverride(${fid},'${f}')" ${checked?'checked':''}>
+      <span class="override-label">${f}</span>
+      <input type="number" class="override-input" id="ov-val-${fid}-${f}" value="${val}" ${checked?'':'disabled'} placeholder="—">
+    </div>`;
+  }).join('');
+
+  div.innerHTML = `
+    <div class="fish-item-header">
+      <input type="text" value="${data.fishId}" placeholder="${placeholder}"
+        style="background:transparent;border:none;color:${accentVar};font-family:var(--mono);font-size:12.5px;outline:none;flex:1;"
+        id="fish-id-${fid}">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="input-suffix" style="width:100px">
+          <input type="number" min="0" max="100" value="${data.poolRate}" id="fish-pool-${fid}"
+            data-sid="${sid}" data-kind="${kind}" oninput="updatePoolTotal(${sid},'${kind}')" style="width:60px">
+          <span class="input-suffix-label">%</span>
+        </div>
+        <button class="icon-btn danger" onclick="removeEntity(${fid},${sid},'${kind}')">✕</button>
+      </div>
+    </div>
+    <div class="fish-stats-grid">${overrideRows}</div>`;
+  list.appendChild(div);
+  updatePoolTotal(sid, kind);
+}
+
+function removeEntity(fid, sid, kind) {
+  const el = document.getElementById(`fish-${fid}`);
+  if (el) el.remove();
+  updatePoolTotal(sid, kind);
+}
+
+function toggleOverride(fid, field) {
+  const chk = document.getElementById(`ov-chk-${fid}-${field}`);
+  const inp = document.getElementById(`ov-val-${fid}-${field}`);
+  inp.disabled = !chk.checked;
+  if (!chk.checked) inp.value = '';
+}
+
+function updatePoolTotal(sid, kind) {
+  const inputs = document.querySelectorAll(`[data-sid="${sid}"][data-kind="${kind}"]`);
+  let total = 0;
+  inputs.forEach(i => total += parseFloat(i.value)||0);
+  total = Math.round(total*10)/10;
+  const bar = document.getElementById(`pool-bar-${sid}-${kind}`);
+  const lbl = document.getElementById(`pool-total-${sid}-${kind}`);
+  if (!bar||!lbl) return;
+  bar.style.width = Math.min(total,100)+'%';
+  bar.className = 'pool-rate-fill'+(total>100?' error':total<100?' warn':'');
+  lbl.textContent = total+'%';
+  lbl.className = 'pool-rate-total'+(total===100?' ok':total>100?' error':' warn');
+}
+
+function saveConfig() {
+  const type = document.getElementById('f-type').value;
+  if (!type) { alert('Please select a Content Type.'); return; }
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+
+  const newCfg = { id: editingId||'cfg-'+Date.now(), type, name, active:activeToggleState, stages:[] };
+  if (type==='DLC') {
+    const dlcId = document.getElementById('f-dlcid').value.trim();
+    if (!dlcId) { alert('DLC ID is required.'); return; }
+    newCfg.dlcId = dlcId;
+  }
+
+  const stageDivs = document.querySelectorAll('#stages-container .stage-card');
+  if (!stageDivs.length) { alert('At least 1 stage is required.'); return; }
+
+  for (const sd of stageDivs) {
+    const sidNum = sd.id.replace('stage-','');
+    const stageId = document.getElementById(`stage-id-${sidNum}`).value.trim();
+    if (!stageId) { alert('Stage ID is required for all stages.'); return; }
+    
+    const fishSpawnRate = parseFloat(document.getElementById(`spawn-rate-fish-${sidNum}`).value)||0;
+    const sharkSpawnRate = parseFloat(document.getElementById(`spawn-rate-shark-${sidNum}`).value)||0;
+    const stageObj = { stageId, fishSpawnRate, sharkSpawnRate, heroFish:[], heroShark:[] };
+
+    if (hasStagePeriod(type)) {
+      const vf = document.getElementById(`stage-from-${sidNum}`).value;
+      const vu = document.getElementById(`stage-until-${sidNum}`).value;
+      if (!vf||!vu) { alert(`Period is required for stage "${stageId}".`); return; }
+      if (vf>=vu) { alert(`Start must be before end in stage "${stageId}".`); return; }
+      stageObj.validFrom = vf; stageObj.validUntil = vu;
+    }
+
+    for (const kind of ['fish','shark']) {
+      const key = kind==='fish' ? 'heroFish' : 'heroShark';
+      const poolInputs = sd.querySelectorAll(`[data-sid="${sidNum}"][data-kind="${kind}"]`);
+      let poolTotal = 0;
+      for (const pi of poolInputs) {
+        const fid = pi.id.replace('fish-pool-','');
+        const fishId = document.getElementById(`fish-id-${fid}`).value.trim();
+        if (!fishId) { alert(`ID required for all ${kind} entries in "${stageId}".`); return; }
+        const poolRate = parseFloat(pi.value)||0;
+        poolTotal += poolRate;
+        const overrides = {};
+        STAT_FIELDS.forEach(f => {
+          const chk = document.getElementById(`ov-chk-${fid}-${f}`);
+          const val = document.getElementById(`ov-val-${fid}-${f}`);
+          if (chk&&chk.checked&&val&&val.value!=='') overrides[f] = parseFloat(val.value);
+        });
+        stageObj[key].push({ fishId, poolRate, overrides });
+      }
+      if (stageObj[key].length && Math.round(poolTotal*10)/10!==100) {
+        alert(`Hero ${kind==='fish'?'Fish':'Shark'} pool rate in "${stageId}" must total 100%.`); return;
+      }
+    }
+
+    if (!stageObj.heroFish.length && !stageObj.heroShark.length) {
+      alert(`Stage "${stageId}" needs at least 1 Hero Fish or Hero Shark.`); return;
+    }
+    newCfg.stages.push(stageObj);
+  }
+
+  if (editingId) {
+    const idx = configs.findIndex(x=>x.id===editingId);
+    if (idx!==-1) configs[idx] = newCfg;
+  } else {
+    configs.push(newCfg);
+  }
+  closePanel(); renderTable();
+  showToast(editingId?'Configuration updated':'Configuration created');
+}
+
+function buildCSVRows(c) {
+  const rows = [];
+  c.stages.forEach(s => {
+    const addRows = (list, kind, spawnRate) => {
+      (list||[]).forEach(f => {
+        rows.push([
+          c.id, c.type,
+          `"${(c.name||'').replace(/"/g,'""')}"`,
+          c.dlcId||'', s.stageId, s.validFrom||'', s.validUntil||'', spawnRate,
+          kind, f.fishId, f.poolRate,
+          f.overrides?.life??'', f.overrides?.power??'', f.overrides?.recovery??'', f.overrides?.bonus??''
+        ].join(','));
+      });
+    };
+    addRows(s.heroFish, 'heroFish', s.fishSpawnRate);
+    addRows(s.heroShark, 'heroShark', s.sharkSpawnRate);
+  });
+  return rows;
+}
+
+const CSV_HEADERS = ['id','contentType','name','dlcId','stageId','validFrom','validUntil','spawnRate','kind','entityId','poolRate','life','power','recovery','bonus'];
+
+function exportCSVById(id) {
+  const c = configs.find(x=>x.id===id);
+  if (!c) return;
+  const rows = [CSV_HEADERS.join(','), ...buildCSVRows(c)];
+  const blob = new Blob(['\uFEFF'+rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`hero-config_${c.id}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast(`CSV exported: ${c.id}`);
+}
+
+function exportCSV() {
+  const filtered = getFiltered();
+  if (!filtered.length) { alert('No data to export.'); return; }
+  const rows = [CSV_HEADERS.join(',')];
+  filtered.forEach(c => rows.push(...buildCSVRows(c)));
+  const blob = new Blob(['\uFEFF'+rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`hero-config_${currentTab}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exported');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.style.display = 'flex';
+  setTimeout(()=>{ t.style.display='none'; }, 2500);
+}
+
+renderTable();
+</script>
+</body>
+</html>
