@@ -201,8 +201,8 @@ select option { background:var(--bg2); }
               <th>Name</th>
               <th>Stage ID</th>
               <th>Period / DLC ID</th>
-              <th>Kind</th>
-              <th>Entity ID</th>
+              <th>FishType</th>
+              <th>FishID</th>
               <th>Spawn Rate</th>
               <th>Life</th>
               <th>Power</th>
@@ -792,7 +792,7 @@ function buildCSVRows(c) {
   return rows;
 }
 
-const CSV_HEADERS = ['id','contentType','name','dlcId','stageId','validFrom','validUntil','spawnRate','kind','entityId','poolRate','life','power','recovery','bonus'];
+const CSV_HEADERS = ['id','contentType','name','dlcId','stageId','startAt','endAt','spawnRate','fishType','fishID','poolRate','life','power','recovery','bonus'];
 
 function exportCSVById(id) {
   const c = configs.find(x=>x.id===id);
