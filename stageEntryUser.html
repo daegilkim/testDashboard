@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picnic Festa DLC 종합 통계 대시보드</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans p-6 md:p-12">
+
+    <div class="max-w-5xl mx-auto">
+        
+        <!-- [1] 상단 헤더 및 필터 컨트롤러 -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Picnic Festa DLC 종합 통계 대시보드</h1>
+                <p class="text-sm text-gray-500 mt-1">스테이지 진입 수와 일별/누적 판매량 추이를 통합 분석합니다.</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- 기간 설정 -->
+                <div class="flex items-center gap-2 bg-gray-100 p-2 rounded-lg text-sm font-medium">
+                    <input type="date" id="startDate" value="2026-05-15" onchange="handleDateChange()" class="bg-transparent border-none outline-none cursor-pointer">
+                    <span class="text-gray-400">~</span>
+                    <input type="date" id="endDate" value="2026-05-21" onchange="handleDateChange()" class="bg-transparent border-none outline-none cursor-pointer">
+                </div>
+                <!-- CSV 내보내기 버튼 -->
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    CSV Export
+                </button>
+            </div>
+        </div>
+
+        <!-- [2] 핵심 매출 지표 카드 요약 (신규 추가) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-6 rounded-2xl shadow-sm">
+                <p class="text-indigo-100 text-xs font-semibold uppercase tracking-wider">선택 기간 총 DLC 판매량</p>
+                <div class="flex items-baseline gap-2 mt-2">
+                    <span id="salesTotalCount" class="text-3xl font-bold tracking-tight">0</span>
+                    <span class="text-sm opacity-80">개 판매됨</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-gray-400 text-xs font-semibold uppercase tracking-wider">선택 기간 일평균 판매량</p>
+                <div class="flex items-baseline gap-2 mt-2">
+                    <span id="salesDailyAvg" class="text-3xl font-bold text-gray-900 tracking-tight">0</span>
+                    <span class="text-sm text-gray-500">개 / 일</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- [3] 대시보드 그래픽 영역 (행 정렬 구조) -->
+        <div class="flex flex-col gap-8 mb-8">
+            
+            <!-- [차트 1] 일별 DLC 판매량 추이 (신규 추가) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-blue-500 rounded-full"></span> 1. DLC 판매량 추이 (일별 및 누적)
+                </h2>
+                <div class="relative w-full h-[320px]">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- [차트 2] 스테이지별 진입 분포 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-indigo-600 rounded-full"></span> 2. 스테이지별 진입 분포 (기간 누적 요약)
+                </h2>
+                <div class="relative w-full h-[320px]">
+                    <canvas id="stageChart"></canvas>
+                </div>
+            </div>
+
+            <!-- [차트 3] 일별 진입 유저 추이 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-cyan-500 rounded-full"></span> 3. 일별 진입 유저 수 트렌드 (시계열 추이)
+                </h2>
+                <div class="relative w-full h-[320px]">
+                    <canvas id="dailyTrendChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- [4] 데이터 테이블 영역 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-lg font-bold text-gray-800">상세 데이터 목록 (스테이지 기준 요약)</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold">
+                            <th class="p-4 pl-6">스테이지</th>
+                            <th class="p-4">기간 내 총 누적 진입 유저 수</th>
+                            <th class="p-4 pr-6">일평균 진입 유저 수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-gray-100 font-medium text-gray-700">
+                        <!-- 동적 생성 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 차트 인스턴스 핸들러
+        let salesChartInstance = null;
+        let stageChartInstance = null;
+        let dailyChartInstance = null;
+
+        // 데이터 저장소
+        let currentSummaryData = [];
+        let currentDailyData = [];
+
+        window.onload = function() {
+            handleDateChange(); 
+        };
+
+        function handleDateChange() {
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+            
+            const start = new Date(startVal);
+            const end = new Date(endVal);
+            
+            if (start > end) {
+                alert("시작일이 종료일보다 클 수 없습니다.");
+                return;
+            }
+
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+            generateMockData(diffDays, start);
+            updateSummaryCards();
+            renderTable();
+            renderSalesChart();
+            renderStageChart();
+            renderDailyChart();
+        }
+
+        function generateMockData(days, startDate) {
+            currentDailyData = [];
+            let cumulativeSalesAccumulator = 12500; // 가상의 이전 시점까지의 누적 판매량 베이스
+            
+            for (let i = 0; i < days; i++) {
+                let d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const multiplier = isWeekend ? 1.4 : 1.0;
+                
+                // 가짜 데이터 연산 (진입 유저 수)
+                const baseUsers = Math.floor(Math.random() * 40) + 140;
+                
+                // 가짜 데이터 연산 (일별 판매량: 보통 주말이나 특정 요일에 상승)
+                const dailySales = Math.floor((Math.random() * 25 + 40) * multiplier);
+                cumulativeSalesAccumulator += dailySales;
+
+                currentDailyData.push({
+                    date: dateStr,
+                    salesDaily: dailySales,
+                    salesCumulative: cumulativeSalesAccumulator,
+                    s1: Math.floor(baseUsers * multiplier),
+                    s2: Math.floor(baseUsers * 0.85 * multiplier),
+                    s3: Math.floor(baseUsers * 0.70 * multiplier),
+                    s4: Math.floor(baseUsers * 0.55 * multiplier),
+                    s5: Math.floor(baseUsers * 0.42 * multiplier),
+                    s6: Math.floor(baseUsers * 0.30 * multiplier),
+                    s7: Math.floor(baseUsers * 0.16 * multiplier)
+                });
+            }
+
+            // 스테이지별 요약 계산
+            currentSummaryData = Array.from({ length: 7 }, (_, idx) => {
+                const stageNum = idx + 1;
+                const total = currentDailyData.reduce((sum, day) => sum + day[`s${stageNum}`], 0);
+                const avg = Number((total / days).toFixed(1));
+                
+                return {
+                    stage: `Stage ${stageNum}`,
+                    totalUsers: total,
+                    dailyAvg: avg
+                };
+            });
+        }
+
+        // 윗상단 요약 스코어보드 수치 업데이트
+        function updateSummaryCards() {
+            const totalSalesInPeriod = currentDailyData.reduce((sum, d) => sum + d.salesDaily, 0);
+            const avgSalesInPeriod = (totalSalesInPeriod / currentDailyData.length).toFixed(1);
+
+            document.getElementById('salesTotalCount').innerText = totalSalesInPeriod.toLocaleString();
+            document.getElementById('salesDailyAvg').innerText = Number(avgSalesInPeriod).toLocaleString();
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            currentSummaryData.forEach(item => {
+                const row = `
+                    <tr class="hover:bg-gray-50/70 transition-colors">
+                        <td class="p-4 pl-6 font-bold text-gray-900">${item.stage}</td>
+                        <td class="p-4 text-indigo-600">${item.totalUsers.toLocaleString()} 명</td>
+                        <td class="p-4 text-rose-600">${item.dailyAvg.toLocaleString()} 명</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // 신규 추가: 일별/누적 판매량 차트 (이중축 구성)
+        function renderSalesChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            const chartData = {
+                labels: currentDailyData.map(d => d.date),
+                datasets: [
+                    {
+                        label: '일별 판매량 (개)',
+                        data: currentDailyData.map(d => d.salesDaily),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue-500
+                        borderColor: 'rgb(37, 99, 235)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'y-daily-sales',
+                        type: 'bar',
+                        order: 2
+                    },
+                    {
+                        label: '누적 총 판매량 (개)',
+                        data: currentDailyData.map(d => d.salesCumulative),
+                        borderColor: 'rgb(16, 185, 129)', // Emerald-500
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        pointRadius: 3,
+                        yAxisID: 'y-cumulative-sales',
+                        type: 'line',
+                        order: 1
+                    }
+                ]
+            };
+
+            if (salesChartInstance) {
+                salesChartInstance.data = chartData;
+                salesChartInstance.update();
+            } else {
+                salesChartInstance = new Chart(ctx, {
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            'y-daily-sales': { type: 'linear', position: 'left', title: { display: true, text: '일별 판매량 (개)' }, beginAtZero: true },
+                            'y-cumulative-sales': { type: 'linear', position: 'right', title: { display: true, text: '누적 판매량 (개)' }, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderStageChart() {
+            const ctx = document.getElementById('stageChart').getContext('2d');
+            const chartData = {
+                labels: currentSummaryData.map(item => item.stage),
+                datasets: [
+                    {
+                        label: '누적 진입 유저',
+                        data: currentSummaryData.map(item => item.totalUsers),
+                        backgroundColor: 'rgba(79, 70, 229, 0.6)',
+                        borderColor: 'rgb(79, 70, 229)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'y-total',
+                        order: 2
+                    },
+                    {
+                        label: '일평균 진입 유저',
+                        data: currentSummaryData.map(item => item.dailyAvg),
+                        type: 'line',
+                        borderColor: 'rgb(225, 29, 72)',
+                        backgroundColor: 'rgb(225, 29, 72)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        yAxisID: 'y-daily',
+                        order: 1
+                    }
+                ]
+            };
+
+            if (stageChartInstance) {
+                stageChartInstance.data = chartData;
+                stageChartInstance.update();
+            } else {
+                stageChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            'y-total': { type: 'linear', position: 'left', title: { display: true, text: '누적 (명)' } },
+                            'y-daily': { type: 'linear', position: 'right', title: { display: true, text: '일평균 (명)' }, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderDailyChart() {
+            const ctx = document.getElementById('dailyTrendChart').getContext('2d');
+            const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#64748b'];
+
+            const dailyDatasets = Array.from({ length: 7 }, (_, i) => {
+                const stageNum = i + 1;
+                return {
+                    label: `Stage ${stageNum}`,
+                    data: currentDailyData.map(d => d[`s${stageNum}`]),
+                    borderColor: colors[i],
+                    backgroundColor: colors[i],
+                    borderWidth: 2,
+                    pointRadius: currentDailyData.length > 30 ? 0 : 3,
+                    tension: 0.2
+                };
+            });
+
+            const chartData = {
+                labels: currentDailyData.map(d => d.date),
+                datasets: dailyDatasets
+            };
+
+            if (dailyChartInstance) {
+                dailyChartInstance.data = chartData;
+                dailyChartInstance.update();
+            } else {
+                dailyChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { type: 'linear', title: { display: true, text: '진입 수 (명)' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function exportToCSV() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            let csvContent = "\uFEFF"; 
+            
+            csvContent += "■ [스테이지별 요약 통계]\n";
+            csvContent += "Stage,Total Users,Daily Average Users\n";
+            currentSummaryData.forEach(item => {
+                csvContent += `${item.stage},${item.totalUsers},${item.dailyAvg}\n`;
+            });
+            
+            csvContent += "\n\n■ [날짜별 판매량 및 진입 상세 통계]\n";
+            csvContent += "Date,Daily Sales,Cumulative Sales,Stage 1,Stage 2,Stage 3,Stage 4,Stage 5,Stage 6,Stage 7\n";
+            currentDailyData.forEach(item => {
+                csvContent += `${item.date},${item.salesDaily},${item.salesCumulative},${item.s1},${item.s2},${item.s3},${item.s4},${item.s5},${item.s6},${item.s7}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Picnic_Festa_Comprehensive_Stats_${start}_to_${end}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
