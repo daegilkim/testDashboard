@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물고기/상어 콘텐츠 통합 통계 대시보드</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans p-6 md:p-12">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- [1] 상단 헤더 및 필터 컨트롤러 -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">물고기/상어 콘텐츠 통합 대시보드</h1>
+                <p class="text-sm text-gray-500 mt-1">일자별 DLC 판매량과 카테고리별 당일 순증가(신규 달성) 추이를 모니터링합니다.</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- 기간 설정 -->
+                <div class="flex items-center gap-2 bg-gray-100 p-2 rounded-lg text-sm font-medium">
+                    <input type="date" id="startDate" value="2026-05-15" onchange="updateDashboard()" class="bg-transparent border-none outline-none cursor-pointer">
+                    <span class="text-gray-400">~</span>
+                    <input type="date" id="endDate" value="2026-05-21" onchange="updateDashboard()" class="bg-transparent border-none outline-none cursor-pointer">
+                </div>
+                <!-- 통합 CSV 내보내기 버튼 -->
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    통합 CSV Export
+                </button>
+            </div>
+        </div>
+
+        <!-- [2] 시각화 영역: 위아래 배치 -->
+        <div class="flex flex-col gap-8 mb-8">
+            <!-- 차트 1: 일자별 DLC 판매량 추이 (신규 반영) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-emerald-500 rounded-full"></span> 1. 일자별 DLC 판매량 추이 (Daily Sales)
+                </h2>
+                <div class="relative w-full h-[220px]">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 차트 2: 일자별 30마리 이상 '순증가량' 추이 비교 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-rose-500 rounded-full"></span> 2. 카테고리별 핵심 유저(30마리 이상) 당일 순수 증가량 추이 비교
+                </h2>
+                <p class="text-xs text-gray-400 mb-2">* 매일 새롭게 30마리 이상 구간에 진입한 순수 유저 수만 집계하여 콘텐츠 소비 트렌드를 분석합니다.</p>
+                <div class="relative w-full h-[280px]">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- [3] 데이터 테이블 영역 (한 눈에 다 보는 마스터 표) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+                <h2 class="text-lg font-bold text-gray-800">통합 상세 데이터 매트릭스 (현황 누적치)</h2>
+                <p class="text-xs text-gray-400 mt-1">각 카테고리별 마리수 구간에 속해있는 실시간 총 유저 수(누적) 명단입니다.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs min-w-[1200px]">
+                    <thead>
+                        <!-- 1차 대분류 헤더 -->
+                        <tr class="bg-gray-100 border-b border-gray-200 text-gray-700 font-bold text-center divide-x divide-gray-200">
+                            <th class="p-3 text-left pl-4 bg-gray-200" rowspan="2">날짜</th>
+                            <th class="p-2 bg-indigo-50" colspan="5">뚱보물고기 획득</th>
+                            <th class="p-2 bg-emerald-50" colspan="5">뚱보물고기 다이어트</th>
+                            <th class="p-2 bg-amber-50" colspan="5">영양실조상어 획득</th>
+                            <th class="p-2 bg-rose-50" colspan="5">영양실조상어 건강회복</th>
+                        </tr>
+                        <!-- 2차 소분류 구간 헤더 -->
+                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold text-center divide-x divide-gray-200">
+                            <th>0</th><th>1-9</th><th>10-19</th><th>20-29</th><th class="font-bold text-gray-700">30+</th>
+                            <th>0</th><th>1-9</th><th>10-19</th><th>20-29</th><th class="font-bold text-gray-700">30+</th>
+                            <th>0</th><th>1-9</th><th>10-19</th><th>20-29</th><th class="font-bold text-gray-700">30+</th>
+                            <th>0</th><th>1-9</th><th>10-19</th><th>20-29</th><th class="font-bold text-gray-700">30+</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody" class="divide-y divide-gray-100 text-center font-medium text-gray-600">
+                        <!-- JS동적 렌더링 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let salesChartInstance = null;
+        let compChartInstance = null;
+        let masterDailyData = []; 
+        let netGrowthData = [];   
+
+        window.onload = function() {
+            updateDashboard(); 
+        };
+
+        function updateDashboard() {
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+            const start = new Date(startVal);
+            const end = new Date(endVal);
+            
+            if (start > end) {
+                alert("시작일이 종료일보다 클 수 없습니다.");
+                return;
+            }
+
+            const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+            generateComprehensiveMockData(diffDays, start);
+            calculateNetGrowth(); 
+            renderMasterTable();
+            renderSalesChart();
+            renderComparisonChart();
+        }
+
+        function generateComprehensiveMockData(days, startDate) {
+            masterDailyData = [];
+
+            let catStates = {
+                f_get:  { r0: 2500, r1: 1500, r10: 700, r20: 200, r30: 100 },
+                f_diet: { r0: 4000, r1: 700,  r10: 200, r20: 80,  r30: 20  },
+                s_get:  { r0: 3200, r1: 1200, r10: 400, r20: 150, r30: 50  },
+                s_heal: { r0: 4500, r1: 400,  r10: 80,  r20: 15,  r30: 5   }
+            };
+
+            for (let i = 0; i < days; i++) {
+                let d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const multiplier = isWeekend ? 1.4 : 1.0;
+                
+                // 가짜 데이터 연산 (일별 dlc 판매량 생성)
+                const dailySales = Math.floor((Math.random() * 30 + 50) * multiplier);
+                const speedBoost = isWeekend ? 2.2 : 1.0;
+
+                Object.keys(catStates).forEach(key => {
+                    let state = catStates[key];
+                    let step1 = Math.floor((Math.random() * 15 + 5) * speedBoost);
+                    let step2 = Math.floor((Math.random() * 12 + 4) * speedBoost);
+                    let step3 = Math.floor((Math.random() * 8 + 2) * speedBoost);
+                    let step4 = Math.floor((Math.random() * 5 + 1) * speedBoost); 
+
+                    state.r0 = Math.max(0, state.r0 - step1);
+                    state.r1 = Math.max(0, state.r1 + step1 - step2);
+                    state.r10 = Math.max(0, state.r10 + step2 - step3);
+                    state.r20 = Math.max(0, state.r20 + step3 - step4);
+                    state.r30 = state.r30 + step4; 
+                });
+
+                masterDailyData.push({
+                    date: dateStr,
+                    salesDaily: dailySales, // 일별 dlc 판매량 데이터 매핑
+                    f_get:  { ...catStates.f_get },
+                    f_diet: { ...catStates.f_diet },
+                    s_get:  { ...catStates.s_get },
+                    s_heal: { ...catStates.s_heal }
+                });
+            }
+        }
+
+        function calculateNetGrowth() {
+            netGrowthData = [];
+            
+            for (let i = 0; i < masterDailyData.length; i++) {
+                const current = masterDailyData[i];
+                
+                if (i === 0) {
+                    netGrowthData.push({
+                        date: current.date,
+                        f_get_net: Math.floor(Math.random() * 5 + 2),
+                        f_diet_net: Math.floor(Math.random() * 3 + 1),
+                        s_get_net: Math.floor(Math.random() * 4 + 1),
+                        s_heal_net: Math.floor(Math.random() * 2 + 0)
+                    });
+                } else {
+                    const previous = masterDailyData[i - 1];
+                    netGrowthData.push({
+                        date: current.date,
+                        f_get_net: current.f_get.r30 - previous.f_get.r30,
+                        f_diet_net: current.f_diet.r30 - previous.f_diet.r30,
+                        s_get_net: current.s_get.r30 - previous.s_get.r30,
+                        s_heal_net: current.s_heal.r30 - previous.s_heal.r30
+                    });
+                }
+            }
+        }
+
+        function renderMasterTable() {
+            const tbody = document.getElementById('masterTableBody');
+            tbody.innerHTML = '';
+
+            masterDailyData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50/70 transition-colors divide-x divide-gray-100";
+                
+                tr.innerHTML = `
+                    <td class="p-3 text-left pl-4 font-bold text-gray-900 bg-gray-50/50">${row.date}</td>
+                    <td>${row.f_get.r0}</td><td>${row.f_get.r1}</td><td>${row.f_get.r10}</td><td>${row.f_get.r20}</td><td class="font-bold text-indigo-600 bg-indigo-50/10">${row.f_get.r30}</td>
+                    <td>${row.f_diet.r0}</td><td>${row.f_diet.r1}</td><td>${row.f_diet.r10}</td><td>${row.f_diet.r20}</td><td class="font-bold text-emerald-600 bg-emerald-50/10">${row.f_diet.r30}</td>
+                    <td>${row.s_get.r0}</td><td>${row.s_get.r1}</td><td>${row.s_get.r10}</td><td>${row.s_get.r20}</td><td class="font-bold text-amber-600 bg-amber-50/10">${row.s_get.r30}</td>
+                    <td>${row.s_heal.r0}</td><td>${row.s_heal.r1}</td><td>${row.s_heal.r10}</td><td>${row.s_heal.r20}</td><td class="font-bold text-rose-600 bg-rose-50/10">${row.s_heal.r30}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 차트 1: 일자별 dlc 판매량 (바 그래프 형태로 큼직하게 노출)
+        function renderSalesChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            const chartData = {
+                labels: masterDailyData.map(d => d.date),
+                datasets: [{
+                    label: 'DLC 당일 판매량 (개)',
+                    data: masterDailyData.map(d => d.salesDaily),
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1
+                }]
+            };
+
+            if (salesChartInstance) {
+                salesChartInstance.data = chartData;
+                salesChartInstance.update();
+            } else {
+                salesChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { title: { display: true, text: '판매 수량 (개)' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderComparisonChart() {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            const chartData = {
+                labels: netGrowthData.map(d => d.date),
+                datasets: [
+                    { label: '뚱보물고기 획득 신규달성', data: netGrowthData.map(d => d.f_get_net), borderColor: '#4f46e5', backgroundColor: '#4f46e5', borderWidth: 2, tension: 0.1 },
+                    { label: '뚱보물고기 다이어트 신규달성', data: netGrowthData.map(d => d.f_diet_net), borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2, tension: 0.1 },
+                    { label: '영양실조상어 획득 신규달성', data: netGrowthData.map(d => d.s_get_net), borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.1 },
+                    { label: '영양실조상어 건강회복 신규달성', data: netGrowthData.map(d => d.s_heal_net), borderColor: '#f43f5e', backgroundColor: '#f43f5e', borderWidth: 2, tension: 0.1 }
+                ]
+            };
+
+            if (compChartInstance) {
+                compChartInstance.data = chartData;
+                compChartInstance.update();
+            } else {
+                compChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: {
+                            y: { title: { display: true, text: '신규 달성 유저 수 (명/일)' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function exportToCSV() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            let csvContent = "\uFEFF"; // 엑셀 한글 깨짐 방지 BOM
+
+            // [카테고리 1] 뚱보물고기 획득
+            csvContent += "■ [1. 뚱보물고기 획득 구간별 누적 통계]\n";
+            csvContent += "Date,0마리,1-9마리,10-19마리,20-29마리,30마리 이상\n";
+            masterDailyData.forEach(r => {
+                csvContent += `${r.date},${r.f_get.r0},${r.f_get.r1},${r.f_get.r10},${r.f_get.r20},${r.f_get.r30}\n`;
+            });
+
+            // 빈 줄로 표 사이 간격 확보
+            csvContent += "\n\n"; 
+
+            // [카테고리 2] 뚱보물고기 다이어트
+            csvContent += "■ [2. 뚱보물고기 다이어트 구간별 누적 통계]\n";
+            csvContent += "Date,0마리,1-9마리,10-19마리,20-29마리,30마리 이상\n";
+            masterDailyData.forEach(r => {
+                csvContent += `${r.date},${r.f_diet.r0},${r.f_diet.r1},${r.f_diet.r10},${r.f_diet.r20},${r.f_diet.r30}\n`;
+            });
+
+            csvContent += "\n\n";
+
+            // [카테고리 3] 영양실조상어 획득
+            csvContent += "■ [3. 영양실조상어 획득 구간별 누적 통계]\n";
+            csvContent += "Date,0마리,1-9마리,10-19마리,20-29마리,30마리 이상\n";
+            masterDailyData.forEach(r => {
+                csvContent += `${r.date},${r.s_get.r0},${r.s_get.r1},${r.s_get.r10},${r.s_get.r20},${r.s_get.r30}\n`;
+            });
+
+            csvContent += "\n\n";
+
+            // [카테고리 4] 영양실조상어 건강회복
+            csvContent += "■ [4. 영양실조상어 건강회복 구간별 누적 통계]\n";
+            csvContent += "Date,0마리,1-9마리,10-19마리,20-29마리,30마리 이상\n";
+            masterDailyData.forEach(r => {
+                csvContent += `${r.date},${r.s_heal.r0},${r.s_heal.r1},${r.s_heal.r10},${r.s_heal.r20},${r.s_heal.r30}\n`;
+            });
+
+            csvContent += "\n\n";
+
+            // [부록] DLC 판매량 및 콘텐츠별 당일 순증가량 (분석용)
+            csvContent += "■ [부록. 일별 DLC 판매량 및 30마리 이상 구간 당일 순증가량]\n";
+            csvContent += "Date,DLC 당일 판매량(개),뚱보물고기 획득(순증),뚱보물고기 다이어트(순증),영양실조상어 획득(순증),영양실조상어 건강회복(순증)\n";
+            masterDailyData.forEach((r, idx) => {
+                const n = netGrowthData[idx];
+                csvContent += `${r.date},${r.salesDaily},${n.f_get_net},${n.f_diet_net},${n.s_get_net},${n.s_heal_net}\n`;
+            });
+
+            // 블롭 데이터 변환 및 다운로드 실행
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Comprehensive_Separated_Stats_${start}_to_${end}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
